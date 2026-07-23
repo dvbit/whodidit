@@ -217,5 +217,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Storico versioni
 
+### 1.0.1
+- Fix: `HTTP 400` all'apertura del config flow — il selettore di entità passava `exclude_entities=None`, che fallisce la validazione voluptuous nel frontend. Ora `exclude_entities` è omesso se nessuna entità è già monitorata.
+- Fix: campo `version` in `manifest.json` allineato alla forma completa `MAJOR.MINOR.PATCH` per i loader più stretti di HA.
+
 ### 1.0 — rilascio iniziale
 - Reimplementazione a feature-parity completa come da specifica sopra.

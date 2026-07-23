@@ -57,15 +57,22 @@ class WhoditFlowHandler(ConfigFlow, domain=DOMAIN):
         # Already-tracked entities are hidden from the picker (spec:
         # "Already-tracked entities are automatically hidden from the
         # picker to prevent duplicates").
+        #
+        # NOTE: EntitySelectorConfig is a TypedDict validated by voluptuous
+        # inside the frontend selector schema. Passing a key with value
+        # `None` triggers a schema validation error (returned as HTTP 400
+        # by the frontend flow endpoint). Build the kwargs dict
+        # dynamically and only include `exclude_entities` when the list
+        # is non-empty.
         excluded = self._already_tracked_entity_ids()
+        selector_kwargs: dict = {"domain": sorted(SUPPORTED_DOMAINS)}
+        if excluded:
+            selector_kwargs["exclude_entities"] = sorted(excluded)
 
         schema = vol.Schema(
             {
                 vol.Required(CONF_TRACKED_ENTITY_ID): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain=sorted(SUPPORTED_DOMAINS),
-                        exclude_entities=sorted(excluded) if excluded else None,
-                    )
+                    selector.EntitySelectorConfig(**selector_kwargs)
                 )
             }
         )

@@ -217,5 +217,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 1.0.1
+- Fix: `HTTP 400` when opening the config flow — the entity selector was passing `exclude_entities=None`, which fails voluptuous schema validation on the frontend. `exclude_entities` is now omitted when no entities are already tracked.
+- Fix: `manifest.json` `version` field aligned to full `MAJOR.MINOR.PATCH` form for stricter HA loaders.
+
 ### 1.0 — initial release
 - Full feature-parity reimplementation as specified above.
