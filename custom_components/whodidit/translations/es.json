@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Añadir entidad a monitorizar",
+        "description": "Elige la entidad que Whodidit debe monitorizar. Se creará un sensor de diagnóstico vinculado a la página de su dispositivo.",
+        "data": {
+          "entity_id": "Entidad a monitorizar"
+        }
+      }
+    },
+    "error": {
+      "unsupported_domain": "El dominio de esta entidad no es compatible con Whodidit.",
+      "already_tracked": "Esta entidad ya está monitorizada por otro sensor Whodidit."
+    },
+    "abort": {
+      "already_configured": "Esta entidad ya está configurada."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "trigger_source": {
+        "name": "Origen del disparador",
+        "state": {
+          "monitoring": "Monitorizando",
+          "automation": "Automatización",
+          "script": "Script",
+          "scene": "Escena",
+          "ui": "Panel/UI",
+          "service": "Cuenta de servicio",
+          "device": "Dispositivo"
+        }
+      }
+    }
+  }
+}

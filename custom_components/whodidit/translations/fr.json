@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ajouter une entité à suivre",
+        "description": "Choisissez l'entité que Whodidit doit surveiller. Un capteur de diagnostic sera créé et rattaché à la page de son appareil.",
+        "data": {
+          "entity_id": "Entité à suivre"
+        }
+      }
+    },
+    "error": {
+      "unsupported_domain": "Le domaine de cette entité n'est pas pris en charge par Whodidit.",
+      "already_tracked": "Cette entité est déjà suivie par un autre capteur Whodidit."
+    },
+    "abort": {
+      "already_configured": "Cette entité est déjà configurée."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "trigger_source": {
+        "name": "Source du déclenchement",
+        "state": {
+          "monitoring": "Surveillance",
+          "automation": "Automatisation",
+          "script": "Script",
+          "scene": "Scène",
+          "ui": "Tableau de bord/UI",
+          "service": "Compte de service",
+          "device": "Appareil"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Zu überwachende Entität hinzufügen",
+        "description": "Wähle die Entität, die Whodidit überwachen soll. Ein Diagnosesensor wird erstellt und der Geräteseite zugeordnet.",
+        "data": {
+          "entity_id": "Zu überwachende Entität"
+        }
+      }
+    },
+    "error": {
+      "unsupported_domain": "Die Domäne dieser Entität wird von Whodidit nicht unterstützt.",
+      "already_tracked": "Diese Entität wird bereits von einem anderen Whodidit-Sensor überwacht."
+    },
+    "abort": {
+      "already_configured": "Diese Entität ist bereits konfiguriert."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "trigger_source": {
+        "name": "Auslösequelle",
+        "state": {
+          "monitoring": "Überwachung",
+          "automation": "Automatisierung",
+          "script": "Skript",
+          "scene": "Szene",
+          "ui": "Dashboard/UI",
+          "service": "Dienstkonto",
+          "device": "Gerät"
+        }
+      }
+    }
+  }
+}

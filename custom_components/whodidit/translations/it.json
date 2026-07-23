@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Aggiungi entità da monitorare",
+        "description": "Scegli l'entità che Whodidit deve monitorare. Verrà creato un sensore diagnostico collegato alla pagina del suo dispositivo.",
+        "data": {
+          "entity_id": "Entità da monitorare"
+        }
+      }
+    },
+    "error": {
+      "unsupported_domain": "Il dominio di questa entità non è supportato da Whodidit.",
+      "already_tracked": "Questa entità è già monitorata da un altro sensore Whodidit."
+    },
+    "abort": {
+      "already_configured": "Questa entità è già configurata."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "trigger_source": {
+        "name": "Sorgente Trigger",
+        "state": {
+          "monitoring": "In monitoraggio",
+          "automation": "Automazione",
+          "script": "Script",
+          "scene": "Scena",
+          "ui": "Dashboard/UI",
+          "service": "Account di servizio",
+          "device": "Dispositivo"
+        }
+      }
+    }
+  }
+}

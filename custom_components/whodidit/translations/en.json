@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a tracked entity",
+        "description": "Choose the entity you want Whodidit to monitor. A diagnostic sensor will be created and attached to its device page.",
+        "data": {
+          "entity_id": "Entity to track"
+        }
+      }
+    },
+    "error": {
+      "unsupported_domain": "This entity's domain is not supported by Whodidit.",
+      "already_tracked": "This entity is already tracked by another Whodidit sensor."
+    },
+    "abort": {
+      "already_configured": "This entity is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "trigger_source": {
+        "name": "Trigger Source",
+        "state": {
+          "monitoring": "Monitoring",
+          "automation": "Automation",
+          "script": "Script",
+          "scene": "Scene",
+          "ui": "Dashboard/UI",
+          "service": "Service Account",
+          "device": "Device"
+        }
+      }
+    }
+  }
+}
