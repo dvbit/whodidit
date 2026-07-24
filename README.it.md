@@ -119,6 +119,58 @@ automation:
             via {{ trigger.event.data.state }}.
 ```
 
+## Interazione fisica (v1.1.0) 🖐️
+
+Per ogni entità monitorata puoi abilitare un **sensore binario** che va ON al primo click fisico (classificazione con `source_type = device`) e resta ON finché non scatta una condizione di reset. Il modello è ispirato a [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction), con in più un reset "consapevole della stanza".
+
+### Configurazione
+
+Impostabile durante il config flow (step 2) o successivamente via **Configura** sull'entry. Campi:
+
+- **Attiva sensore binario di interazione fisica** — interruttore principale.
+- **Tempo di reset (secondi)** — default 300.
+- **Finestra conteggio click (secondi)** — default 3 (come `switch_interaction`).
+- **Sensore di presenza** — opzionale, dominio `binary_sensor`.
+- **Sensore di movimento** — opzionale, dominio `binary_sensor`.
+
+### Logica di reset
+
+Tre modalità, in base ai sensori configurati (**presenza > movimento > solo tempo**):
+
+1. **Con sensore di presenza:** dopo un click fisico, si attende che la presenza sia OFF, poi si contano `reset_lapse_seconds`; se la presenza torna ON durante il conteggio il timer si annulla e riparte quando torna OFF. Il reset manuale via servizio è sempre disponibile.
+2. **Con sensore di movimento (senza presenza):** come sopra ma sul sensore di movimento.
+3. **Nessun sensore di riferimento:** `reset_lapse_seconds` a partire dal momento in cui il binary è andato ON.
+
+Ogni nuovo click fisico che arriva mentre il conteggio di reset è pendente lo annulla — l'utente sta ancora interagendo.
+
+### Servizio
+
+`whodidit.reset_physical_interaction` — forza OFF e azzera `click_count`. `entity_id` accetta **sia** l'entità monitorata **sia** il sensore binario stesso.
+
+```yaml
+service: whodidit.reset_physical_interaction
+data:
+  entity_id: light.kitchen
+```
+
+### Esempio di automazione
+
+```yaml
+automation:
+  - alias: "Triplo click fisico -> scena cinema"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.kitchen_light_physical_interaction
+        to: "off"
+    condition:
+      - condition: template
+        value_template: "{{ trigger.from_state.attributes.click_count == 3 }}"
+    action:
+      - service: scene.turn_on
+        target:
+          entity_id: scene.movie
+```
+
 ## Esempi di automazione
 
 **Non far spegnere dal sensore di movimento una luce accesa manualmente:**
@@ -216,6 +268,11 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Storico versioni
+
+### 1.1.0
+- Novità: **sensore binario di interazione fisica** opzionale per entità con attributo `click_count` (modello ispirato a [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction)).
+- Novità: auto-reset a tre modalità (presenza > movimento > solo tempo) più reset manuale via nuovo servizio `whodidit.reset_physical_interaction`.
+- Novità: config flow in due step (selezione entità + opzioni interazione fisica) e Options Flow completo per modificare i parametri in seguito.
 
 ### 1.0.1
 - Fix: `HTTP 400` all'apertura del config flow — il selettore di entità passava `exclude_entities=None`, che fallisce la validazione voluptuous nel frontend. Ora `exclude_entities` è omesso se nessuna entità è già monitorata.

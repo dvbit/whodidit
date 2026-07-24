@@ -52,6 +52,7 @@ from .const import (
     STATE_UI,
     VALID_SENSOR_STATES,
 )
+from .runtime import WhoditEntryRuntime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,10 +73,11 @@ async def async_setup_entry(
 ) -> None:
     """Set up the single Whodidit sensor for this config entry."""
     cache: TriggerCache = hass.data[DOMAIN]["cache"]
+    runtime: WhoditEntryRuntime = hass.data[DOMAIN]["entries_runtime"][entry.entry_id]
     tracked_entity_id = entry.data[CONF_TRACKED_ENTITY_ID]
     device_info = _resolve_device_info(hass, entry, tracked_entity_id)
 
-    async_add_entities([WhoditSensor(cache, entry, tracked_entity_id, device_info)])
+    async_add_entities([WhoditSensor(cache, runtime, entry, tracked_entity_id, device_info)])
 
 
 def _resolve_device_info(hass: HomeAssistant, entry: ConfigEntry, tracked_entity_id: str) -> DeviceInfo:
@@ -117,11 +119,13 @@ class WhoditSensor(RestoreEntity, SensorEntity):
     def __init__(
         self,
         cache: TriggerCache,
+        runtime: WhoditEntryRuntime,
         entry: ConfigEntry,
         tracked_entity_id: str,
         device_info: DeviceInfo,
     ) -> None:
         self._cache = cache
+        self._runtime = runtime
         self._entry = entry
         self._tracked_entity_id = tracked_entity_id
         self._domain = split_entity_id(tracked_entity_id)[0]
@@ -299,6 +303,12 @@ class WhoditSensor(RestoreEntity, SensorEntity):
                 ATTR_EVENT_TIME: event_time,
             },
         )
+
+        # v1.1.0 spec: physical clicks (source_type == device) are handed
+        # off to the per-entry runtime so the physical-interaction binary
+        # sensor of this same entry can update its state and click_count.
+        if result.source_type == SOURCE_DEVICE:
+            self._runtime.notify_device_click(context_id, event_time)
 
     # ------------------------------------------------------------------
     # Exposed attributes (spec: "Sensor Attributes")

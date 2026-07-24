@@ -7,6 +7,17 @@
         "data": {
           "entity_id": "Entity to track"
         }
+      },
+      "options": {
+        "title": "Physical interaction (optional)",
+        "description": "Optionally add a binary sensor that turns ON when a physical interaction is detected on this entity, plus a click counter. Leave the sensors empty for time-only reset.",
+        "data": {
+          "enable_physical_interaction": "Enable physical-interaction binary sensor",
+          "reset_lapse_seconds": "Reset lapse (seconds)",
+          "click_window_seconds": "Click count window (seconds)",
+          "occupancy_sensor_entity_id": "Occupancy sensor (takes priority)",
+          "motion_sensor_entity_id": "Motion sensor (fallback)"
+        }
       }
     },
     "error": {
@@ -15,6 +26,21 @@
     },
     "abort": {
       "already_configured": "This entity is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Physical interaction",
+        "description": "Enable or reconfigure the physical-interaction binary sensor for this entity.",
+        "data": {
+          "enable_physical_interaction": "Enable physical-interaction binary sensor",
+          "reset_lapse_seconds": "Reset lapse (seconds)",
+          "click_window_seconds": "Click count window (seconds)",
+          "occupancy_sensor_entity_id": "Occupancy sensor (takes priority)",
+          "motion_sensor_entity_id": "Motion sensor (fallback)"
+        }
+      }
     }
   },
   "entity": {
@@ -29,6 +55,23 @@
           "ui": "Dashboard/UI",
           "service": "Service Account",
           "device": "Device"
+        }
+      }
+    },
+    "binary_sensor": {
+      "physical_interaction": {
+        "name": "Physical Interaction"
+      }
+    }
+  },
+  "services": {
+    "reset_physical_interaction": {
+      "name": "Reset physical interaction",
+      "description": "Force the physical-interaction binary sensor OFF and clear the click counter.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The tracked entity or the physical-interaction binary sensor."
         }
       }
     }

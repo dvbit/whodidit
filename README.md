@@ -119,6 +119,58 @@ automation:
             via {{ trigger.event.data.state }}.
 ```
 
+## Physical Interaction (v1.1.0) 🖐️
+
+For every tracked entity you can enable a companion **binary sensor** that turns ON at the first physical click (a classification with `source_type = device`) and stays ON until a reset condition is met. This mirrors the model of [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction) and adds room-aware auto-reset.
+
+### Configuration
+
+Enabled during the config flow (step 2) or later via **Configure** on the entry. Fields:
+
+- **Enable physical-interaction binary sensor** — master switch.
+- **Reset lapse (seconds)** — default 300.
+- **Click count window (seconds)** — default 3 (matches `switch_interaction`).
+- **Occupancy sensor** — optional, `binary_sensor` domain.
+- **Motion sensor** — optional, `binary_sensor` domain.
+
+### Reset logic
+
+Three modes, decided by which sensors are configured (**occupancy > motion > time-only**):
+
+1. **Occupancy configured:** after a physical click, wait for occupancy to be OFF, then count `reset_lapse_seconds`; if occupancy goes ON during the countdown the timer is cancelled and restarts when it clears again. Manual service reset is always available.
+2. **Motion configured (no occupancy):** same as above but on the motion sensor.
+3. **No reference sensor:** `reset_lapse_seconds` counted from the moment the binary went ON.
+
+Any additional physical click while the reset countdown is pending cancels the countdown — the user is still interacting.
+
+### Service
+
+`whodidit.reset_physical_interaction` — forces OFF and clears `click_count`. `entity_id` accepts **either** the tracked entity **or** the binary sensor itself.
+
+```yaml
+service: whodidit.reset_physical_interaction
+data:
+  entity_id: light.kitchen
+```
+
+### Automation example
+
+```yaml
+automation:
+  - alias: "Triple physical click -> movie scene"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.kitchen_light_physical_interaction
+        to: "off"
+    condition:
+      - condition: template
+        value_template: "{{ trigger.from_state.attributes.click_count == 3 }}"
+    action:
+      - service: scene.turn_on
+        target:
+          entity_id: scene.movie
+```
+
 ## Automation examples
 
 **Don't let a motion sensor turn off a light that was manually turned on:**
@@ -216,6 +268,11 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Version history
+
+### 1.1.0
+- New: optional **Physical Interaction binary sensor** per tracked entity with `click_count` attribute (model inspired by [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction)).
+- New: three-mode auto-reset (occupancy > motion > time-only) plus manual reset via the new `whodidit.reset_physical_interaction` service.
+- New: two-step config flow (entity picker + physical-interaction options) and full Options Flow to edit settings later.
 
 ### 1.0.1
 - Fix: `HTTP 400` when opening the config flow — the entity selector was passing `exclude_entities=None`, which fails voluptuous schema validation on the frontend. `exclude_entities` is now omitted when no entities are already tracked.

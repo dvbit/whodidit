@@ -1,0 +1,15 @@
+# Whodidit services descriptor.
+# Spec ref: v1.1.0 - `whodidit.reset_physical_interaction`.
+reset_physical_interaction:
+  name: Reset physical interaction
+  description: >
+    Force the Whodidit physical-interaction binary sensor to OFF and clear
+    its click counter. Accepts either the tracked entity id (e.g.
+    light.kitchen) or the binary sensor id itself.
+  fields:
+    entity_id:
+      name: Entity
+      description: The tracked entity or the physical-interaction binary sensor.
+      required: true
+      selector:
+        entity: {}

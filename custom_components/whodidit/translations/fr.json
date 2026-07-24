@@ -7,6 +7,17 @@
         "data": {
           "entity_id": "Entité à suivre"
         }
+      },
+      "options": {
+        "title": "Interaction physique (optionnel)",
+        "description": "Vous pouvez ajouter un capteur binaire qui passe à ON lorsqu'une interaction physique est détectée, avec un compteur de clics. Laissez les capteurs vides pour un reset uniquement temporel.",
+        "data": {
+          "enable_physical_interaction": "Activer le capteur binaire d'interaction physique",
+          "reset_lapse_seconds": "Délai de réinitialisation (secondes)",
+          "click_window_seconds": "Fenêtre de comptage des clics (secondes)",
+          "occupancy_sensor_entity_id": "Capteur de présence (priorité)",
+          "motion_sensor_entity_id": "Capteur de mouvement (repli)"
+        }
       }
     },
     "error": {
@@ -15,6 +26,21 @@
     },
     "abort": {
       "already_configured": "Cette entité est déjà configurée."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Interaction physique",
+        "description": "Activez ou reconfigurez le capteur binaire d'interaction physique pour cette entité.",
+        "data": {
+          "enable_physical_interaction": "Activer le capteur binaire d'interaction physique",
+          "reset_lapse_seconds": "Délai de réinitialisation (secondes)",
+          "click_window_seconds": "Fenêtre de comptage des clics (secondes)",
+          "occupancy_sensor_entity_id": "Capteur de présence (priorité)",
+          "motion_sensor_entity_id": "Capteur de mouvement (repli)"
+        }
+      }
     }
   },
   "entity": {
@@ -29,6 +55,23 @@
           "ui": "Tableau de bord/UI",
           "service": "Compte de service",
           "device": "Appareil"
+        }
+      }
+    },
+    "binary_sensor": {
+      "physical_interaction": {
+        "name": "Interaction physique"
+      }
+    }
+  },
+  "services": {
+    "reset_physical_interaction": {
+      "name": "Réinitialiser l'interaction physique",
+      "description": "Force le capteur binaire d'interaction physique à OFF et remet à zéro le compteur de clics.",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "L'entité suivie ou le capteur binaire d'interaction physique."
         }
       }
     }

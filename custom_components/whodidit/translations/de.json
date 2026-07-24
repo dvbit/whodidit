@@ -7,6 +7,17 @@
         "data": {
           "entity_id": "Zu überwachende Entität"
         }
+      },
+      "options": {
+        "title": "Physische Interaktion (optional)",
+        "description": "Du kannst einen Binärsensor hinzufügen, der auf ON geht, wenn eine physische Interaktion erkannt wird, mit Klickzähler. Lass die Sensoren leer für ein rein zeitbasiertes Reset.",
+        "data": {
+          "enable_physical_interaction": "Binärsensor für physische Interaktion aktivieren",
+          "reset_lapse_seconds": "Reset-Zeit (Sekunden)",
+          "click_window_seconds": "Klick-Zählfenster (Sekunden)",
+          "occupancy_sensor_entity_id": "Anwesenheitssensor (Priorität)",
+          "motion_sensor_entity_id": "Bewegungssensor (Fallback)"
+        }
       }
     },
     "error": {
@@ -15,6 +26,21 @@
     },
     "abort": {
       "already_configured": "Diese Entität ist bereits konfiguriert."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Physische Interaktion",
+        "description": "Aktiviere oder konfiguriere den Binärsensor für physische Interaktion für diese Entität.",
+        "data": {
+          "enable_physical_interaction": "Binärsensor für physische Interaktion aktivieren",
+          "reset_lapse_seconds": "Reset-Zeit (Sekunden)",
+          "click_window_seconds": "Klick-Zählfenster (Sekunden)",
+          "occupancy_sensor_entity_id": "Anwesenheitssensor (Priorität)",
+          "motion_sensor_entity_id": "Bewegungssensor (Fallback)"
+        }
+      }
     }
   },
   "entity": {
@@ -29,6 +55,23 @@
           "ui": "Dashboard/UI",
           "service": "Dienstkonto",
           "device": "Gerät"
+        }
+      }
+    },
+    "binary_sensor": {
+      "physical_interaction": {
+        "name": "Physische Interaktion"
+      }
+    }
+  },
+  "services": {
+    "reset_physical_interaction": {
+      "name": "Physische Interaktion zurücksetzen",
+      "description": "Zwingt den Binärsensor für physische Interaktion auf OFF und setzt den Klickzähler zurück.",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Die überwachte Entität oder der Binärsensor für physische Interaktion."
         }
       }
     }

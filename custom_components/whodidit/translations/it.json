@@ -7,6 +7,17 @@
         "data": {
           "entity_id": "Entità da monitorare"
         }
+      },
+      "options": {
+        "title": "Interazione fisica (opzionale)",
+        "description": "Puoi aggiungere un sensore binario che va ON quando viene rilevata un'interazione fisica su questa entità, con contatore di click. Lascia vuoti i sensori per un reset solo a tempo.",
+        "data": {
+          "enable_physical_interaction": "Attiva sensore binario di interazione fisica",
+          "reset_lapse_seconds": "Tempo di reset (secondi)",
+          "click_window_seconds": "Finestra conteggio click (secondi)",
+          "occupancy_sensor_entity_id": "Sensore di presenza (priorità)",
+          "motion_sensor_entity_id": "Sensore di movimento (fallback)"
+        }
       }
     },
     "error": {
@@ -15,6 +26,21 @@
     },
     "abort": {
       "already_configured": "Questa entità è già configurata."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Interazione fisica",
+        "description": "Attiva o riconfigura il sensore binario di interazione fisica per questa entità.",
+        "data": {
+          "enable_physical_interaction": "Attiva sensore binario di interazione fisica",
+          "reset_lapse_seconds": "Tempo di reset (secondi)",
+          "click_window_seconds": "Finestra conteggio click (secondi)",
+          "occupancy_sensor_entity_id": "Sensore di presenza (priorità)",
+          "motion_sensor_entity_id": "Sensore di movimento (fallback)"
+        }
+      }
     }
   },
   "entity": {
@@ -29,6 +55,23 @@
           "ui": "Dashboard/UI",
           "service": "Account di servizio",
           "device": "Dispositivo"
+        }
+      }
+    },
+    "binary_sensor": {
+      "physical_interaction": {
+        "name": "Interazione Fisica"
+      }
+    }
+  },
+  "services": {
+    "reset_physical_interaction": {
+      "name": "Reset interazione fisica",
+      "description": "Forza il sensore binario di interazione fisica a OFF e azzera il contatore click.",
+      "fields": {
+        "entity_id": {
+          "name": "Entità",
+          "description": "L'entità monitorata oppure il sensore binario di interazione fisica."
         }
       }
     }
