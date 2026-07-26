@@ -252,6 +252,16 @@ class TriggerCache:
             }
             if entry.source_type == SOURCE_USER:
                 self._maybe_flag_bleed(entity_id, context.id)
+                # The entry may be a provisional UI service-call context
+                # cached with an empty name (see _async_handle_call_service
+                # case 2). Resolve the person/service name now so the UI
+                # source is reported with the actual user, not blank.
+                if not entry.source_name:
+                    name, is_service = await self._async_resolve_user(entry.source_id)
+                    resolved_type = SOURCE_SERVICE if is_service else SOURCE_USER
+                    return ClassificationResult(
+                        resolved_type, entry.source_id, name, "high", cache_debug
+                    )
             return ClassificationResult(
                 entry.source_type, entry.source_id, entry.source_name, "high", cache_debug
             )

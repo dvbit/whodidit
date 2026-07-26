@@ -288,6 +288,10 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Storico versioni
 
+### 1.3.3
+- Fix (card): `device` e `monitoring` non mostrano più l'etichetta "Device" duplicata — il nome sorgente ridondante è nascosto, resta solo l'orario.
+- Fix (card + backend): le azioni da UI ora mostrano l'utente che le ha eseguite (`by <nome>`). Un context di service call UI messo in cache con nome vuoto viene ora risolto all'effettiva persona/account di servizio anche in caso di cache-hit diretto, così `source_name` è valorizzato invece che vuoto.
+
 ### 1.3.2
 - Fix: corretto il comportamento di `click_count`. Alla chiusura della finestra di rilevazione il valore ora **persiste** (continua a mostrare l'ultimo treno completato, es. 2); si azzera solo al primo click del treno successivo. Quindi un singolo click mostra 1; dopo la finestra un doppio click mostra 2 (non 3), e nel frattempo resta visibile il valore precedente. Il valore viene ripristinato al riavvio.
 

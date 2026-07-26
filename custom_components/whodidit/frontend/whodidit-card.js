@@ -24,7 +24,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "1.3.2";
+const CARD_VERSION = "1.3.3";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -121,6 +121,32 @@ class WhoditCard extends HTMLElement {
     return t || slug;
   }
 
+  /** Compose the subtitle line under the state.
+   *  - device / monitoring: backend source_name duplicates the state, so
+   *    show only the relative time.
+   *  - ui: show "by <user>" (source_name holds the person name).
+   *  - service: show "by <service account>".
+   *  - automation / script / scene: show the specific entity name. */
+  _buildSubtitle(slug, a) {
+    const time = this._relTime(a.event_time);
+    const name = a.source_name;
+    // Names to treat as "no meaningful name" (generic placeholders).
+    const generic = ["device", "monitoring", ""];
+    const isGeneric =
+      !name || generic.includes(String(name).toLowerCase());
+
+    if (slug === "device" || slug === "monitoring") {
+      return time;
+    }
+    if (slug === "ui" || slug === "service") {
+      // Prefer the resolved person/account name; fall back to user_id.
+      const who = !isGeneric ? name : a.user_id ? `user ${String(a.user_id).slice(0, 8)}` : null;
+      return who ? `by ${who} · ${time}` : time;
+    }
+    // automation / script / scene
+    return !isGeneric ? `${name} · ${time}` : time;
+  }
+
   // ----- Render -------------------------------------------------------------
   _render() {
     if (!this._config) return;
@@ -160,6 +186,12 @@ class WhoditCard extends HTMLElement {
         </div>`
       : "";
 
+    // Build a clean subtitle. For device/monitoring the backend sets a
+    // generic source_name ("Device"/"") that duplicates the state label,
+    // so we suppress it. For ui/service we prefix the user with a label so
+    // it reads "by <name>".
+    const subtitle = this._buildSubtitle(slug, a);
+
     this.shadowRoot.innerHTML = `${this._styles()}
       <ha-card>
         <div class="body">
@@ -170,7 +202,7 @@ class WhoditCard extends HTMLElement {
                 <span class="state">${this._localizeState(slug)}</span>
                 <span class="conf-dot" style="background:${confColor}" title="${conf || "unknown"}"></span>
               </div>
-              <div class="row-sub">${a.source_name ? a.source_name + " · " : ""}${this._relTime(a.event_time)}</div>
+              <div class="row-sub">${subtitle}</div>
             </div>
             <ha-icon class="chevron" icon="mdi:chevron-right"></ha-icon>
           </div>

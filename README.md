@@ -287,6 +287,10 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 1.3.3
+- Fix (card): `device` and `monitoring` no longer show a duplicated "Device" label — the redundant source name is suppressed, leaving just the time.
+- Fix (card + backend): UI actions now show the user who performed them (`by <name>`). A UI service-call context cached with an empty name is now resolved to the actual person/service account on a direct cache hit, so `source_name` is populated instead of blank.
+
 ### 1.3.2
 - Fix: corrected `click_count` behaviour. When the detection window closes the value now **persists** (it keeps showing the last completed train, e.g. 2); it resets to 0 only at the first click of the next train. So a single click shows 1; after the window a double-click shows 2 (not 3), and the previous value stays visible in between. The value is restored across restarts.
 
