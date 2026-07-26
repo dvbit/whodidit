@@ -362,6 +362,12 @@ class WhoditPhysicalInteractionSensor(RestoreEntity, BinarySensorEntity):
     # Attributes
     # ------------------------------------------------------------------
     @property
+    def icon(self) -> str:
+        """mdi icon shown in the HA UI: an active hand when ON, an outline
+        when idle."""
+        return "mdi:hand-back-right" if self._attr_is_on else "mdi:hand-back-right-off"
+
+    @property
     def extra_state_attributes(self) -> dict:
         return {
             ATTR_CLICK_COUNT: self._click_count,

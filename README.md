@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.png" alt="Whodidit" width="128" height="128"/>
+</p>
+
 # Whodidit 🕵️
 
 **A Home Assistant custom integration – know exactly what triggered your smart devices.**
@@ -286,6 +290,11 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Version history
+
+### 1.3.4
+- Added the project icon to the top of the README (visible on GitHub and in the HACS Info tab).
+- Entities now carry dynamic mdi icons in the Home Assistant UI: the trigger-source sensor changes icon per state (radar/robot/script/palette/tap/cog/double-tap) and the physical-interaction binary sensor shows an active/idle hand.
+- Note: the integration/brand icon shown on the **Devices & Services** page comes exclusively from the [home-assistant/brands](https://github.com/home-assistant/brands) repository, not from a local `icon.png`. A separate brands pull request is required for that specific slot; the mdi entity icons above are independent and work immediately.
 
 ### 1.3.3
 - Fix (card): `device` and `monitoring` no longer show a duplicated "Device" label — the redundant source name is suppressed, leaving just the time.

@@ -67,6 +67,17 @@ _SOURCE_TO_STATE = {
     SOURCE_DEVICE: STATE_DEVICE,
 }
 
+# mdi icon per sensor state, shown in the HA frontend next to the entity.
+_STATE_MDI_ICONS = {
+    STATE_MONITORING: "mdi:radar",
+    STATE_AUTOMATION: "mdi:robot",
+    STATE_SCRIPT: "mdi:script-text",
+    STATE_SCENE: "mdi:palette",
+    STATE_UI: "mdi:gesture-tap",
+    STATE_SERVICE: "mdi:cog-transfer",
+    STATE_DEVICE: "mdi:gesture-double-tap",
+}
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -326,3 +337,9 @@ class WhoditSensor(RestoreEntity, SensorEntity):
             ATTR_HISTORY_LOG: list(self._history_log),
             ATTR_CACHE_DEBUG: self._cache_debug,
         }
+
+    @property
+    def icon(self) -> str:
+        """Dynamic mdi icon reflecting the current trigger source (shown in
+        the HA UI next to the entity)."""
+        return _STATE_MDI_ICONS.get(self._attr_native_value, "mdi:magnify-scan")

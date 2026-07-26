@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.png" alt="Whodidit" width="128" height="128"/>
+</p>
+
 # Whodidit 🕵️
 
 **Integrazione custom per Home Assistant – sappi esattamente cosa ha attivato i tuoi dispositivi smart.**
@@ -287,6 +291,11 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Storico versioni
+
+### 1.3.4
+- Aggiunta l'icona del progetto in cima al README (visibile su GitHub e nel tab Info di HACS).
+- Le entità ora hanno icone mdi dinamiche nell'interfaccia di Home Assistant: il sensore sorgente-trigger cambia icona per stato (radar/robot/script/tavolozza/tap/ingranaggio/doppio-tap) e il sensore binario di interazione fisica mostra una mano attiva/inattiva.
+- Nota: l'icona dell'integrazione/brand mostrata nella pagina **Dispositivi e Servizi** proviene esclusivamente dal repository [home-assistant/brands](https://github.com/home-assistant/brands), non da un `icon.png` locale. Per quello specifico slot serve una pull request separata a brands; le icone mdi delle entità qui sopra sono indipendenti e funzionano subito.
 
 ### 1.3.3
 - Fix (card): `device` e `monitoring` non mostrano più l'etichetta "Device" duplicata — il nome sorgente ridondante è nascosto, resta solo l'orario.
