@@ -24,7 +24,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "1.3.0";
+const CARD_VERSION = "1.3.2";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",

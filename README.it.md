@@ -288,6 +288,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Storico versioni
 
+### 1.3.2
+- Fix: corretto il comportamento di `click_count`. Alla chiusura della finestra di rilevazione il valore ora **persiste** (continua a mostrare l'ultimo treno completato, es. 2); si azzera solo al primo click del treno successivo. Quindi un singolo click mostra 1; dopo la finestra un doppio click mostra 2 (non 3), e nel frattempo resta visibile il valore precedente. Il valore viene ripristinato al riavvio.
+
 ### 1.3.1
 - Fix: le azioni da UI/dashboard venivano talvolta classificate erroneamente come `device`. Home Assistant emette spesso l'evento `state_changed` risultante con `user_id = None`, mantenendo solo `parent_id` che punta alla service call originaria (comportamento del core, vedi issue #90669). Whodidit ora mette in cache ogni context di service call iniziata da un utente e lo risolve via `parent_id`, così i tap sulla dashboard sono correttamente riportati come `ui` (o `service` per gli account di servizio). Nota: alcune integrazioni emettono un context completamente nuovo senza `user_id` né `parent_id`; quei cambiamenti restano indistinguibili da un evento fisico `device` a livello di context.
 

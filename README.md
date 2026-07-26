@@ -287,6 +287,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 1.3.2
+- Fix: corrected `click_count` behaviour. When the detection window closes the value now **persists** (it keeps showing the last completed train, e.g. 2); it resets to 0 only at the first click of the next train. So a single click shows 1; after the window a double-click shows 2 (not 3), and the previous value stays visible in between. The value is restored across restarts.
+
 ### 1.3.1
 - Fix: UI/dashboard actions were sometimes misclassified as `device`. Home Assistant frequently emits the resulting `state_changed` event with `user_id = None`, keeping only `parent_id` pointing back to the originating service call (core behaviour, see core issue #90669). Whodidit now caches every user-initiated service-call context and resolves it via `parent_id`, so dashboard taps are correctly reported as `ui` (or `service` for service accounts). Note: a few integrations emit a brand-new context with neither `user_id` nor `parent_id` preserved; those changes remain indistinguishable from a physical `device` event at the context level.
 
