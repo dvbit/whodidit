@@ -74,6 +74,20 @@
           "description": "L'entità monitorata oppure il sensore binario di interazione fisica."
         }
       }
+    },
+    "update_options": {
+      "name": "Aggiorna opzioni",
+      "description": "Aggiorna le opzioni di interazione fisica dell'entry a cui appartiene l'entità indicata (usato dalla card Whodidit).",
+      "fields": {
+        "entity_id": {
+          "name": "Entità",
+          "description": "L'entità monitorata o una qualsiasi entità Whodidit dell'entry."
+        },
+        "options": {
+          "name": "Opzioni",
+          "description": "Oggetto opzioni parziale da unire alla configurazione dell'entry."
+        }
+      }
     }
   }
 }

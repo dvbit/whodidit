@@ -211,6 +211,26 @@ automation:
           message: "Whodidit non è certo della sorgente per la luce del garage."
 ```
 
+## Card Whodidit (v1.2.0) 🃏
+
+L'integrazione include una **card Lovelace personalizzata** registrata automaticamente — nessuna installazione HACS "Frontend" separata. Dopo l'aggiornamento, fai un hard-refresh del browser (Ctrl/Cmd+Shift+R) o svuota una volta la cache dell'app companion per caricare la nuova risorsa.
+
+Aggiungila a una dashboard:
+
+```yaml
+type: custom:whodidit-card
+entity: sensor.kitchen_light_trigger_source
+```
+
+La card mostra:
+
+- **Ultima interazione** — stato, nome sorgente, timestamp e badge di confidenza colorato.
+- **Interazione fisica** — ON/OFF, `click_count`, ora ultimo click, sensore di riferimento e pulsante **Reset** (solo se il sensore binario è attivo).
+- **Storico** — timeline compatta delle ultime 25 voci di `history_log`.
+- Un **ingranaggio impostazioni** (⚙️) che apre un dialog per modificare al volo: attivazione sensore interazione fisica, tempo di reset, finestra click e sensori di riferimento presenza/movimento. Il salvataggio chiama `whodidit.update_options`, che ricarica l'entry rendendo effettive subito le modifiche.
+
+> **Nota sulla distribuzione.** HACS non mostra nel tab "Frontend" le card che vivono in un repository di tipo *Integration*. È previsto: Whodidit serve la card come asset statico e la registra da sé come risorsa Lovelace, quindi funziona senza aggiungere manualmente la risorsa (in modalità Lovelace *storage*). In modalità *YAML* aggiungi la risorsa a mano: `url: /whodidit/whodidit-card.js`, `type: module`.
+
 ## Limiti noti
 
 - **Riavvii di sistema:** i cambiamenti avvenuti mentre HA è offline non vengono rilevati.
@@ -268,6 +288,11 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Storico versioni
+
+### 1.2.0
+- Novità: **card Whodidit** inclusa (`custom:whodidit-card`) auto-registrata dall'integrazione — ultima interazione, blocco interazione fisica, timeline storico (25 voci) e ingranaggio impostazioni per modificare le opzioni al volo.
+- Novità: servizio `whodidit.update_options` a supporto del dialog impostazioni della card.
+- Il manifest ora dichiara le dipendenze `frontend` + `http` per servire l'asset statico.
 
 ### 1.1.1
 - Novità: icona dell'integrazione (lente d'ingrandimento con un `?` — il motivo classico "chi è stato?") aggiunta come `icon.png` / `icon@2x.png` nella cartella del componente. Home Assistant la mostra automaticamente nella pagina Integrazioni; su GitHub / HACS lo stesso asset appare nella card del repo.

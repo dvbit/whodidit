@@ -13,3 +13,26 @@ reset_physical_interaction:
       required: true
       selector:
         entity: {}
+
+update_options:
+  name: Update options
+  description: >
+    Update the physical-interaction options of the Whodidit entry that owns
+    the given entity. Used by the Whodidit card settings dialog; the entry
+    reloads automatically to apply the new settings.
+  fields:
+    entity_id:
+      name: Entity
+      description: The tracked entity or any Whodidit entity of the target entry.
+      required: true
+      selector:
+        entity: {}
+    options:
+      name: Options
+      description: >
+        Partial options object (enable_physical_interaction,
+        reset_lapse_seconds, click_window_seconds,
+        occupancy_sensor_entity_id, motion_sensor_entity_id).
+      required: true
+      selector:
+        object: {}

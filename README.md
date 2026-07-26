@@ -211,8 +211,27 @@ automation:
           message: "Whodidit is uncertain about the garage light trigger source."
 ```
 
-## Caveats and limitations
+## Whodidit Card (v1.2.0) 🃏
 
+The integration ships a **custom Lovelace card** that is registered automatically — no separate HACS "Frontend" install needed. After updating, hard-refresh the browser (Ctrl/Cmd+Shift+R) or clear the companion-app cache once so the new resource loads.
+
+Add it to a dashboard:
+
+```yaml
+type: custom:whodidit-card
+entity: sensor.kitchen_light_trigger_source
+```
+
+The card shows:
+
+- **Last interaction** — state, source name, timestamp and a colour-coded confidence badge.
+- **Physical interaction** — ON/OFF, `click_count`, last click time, reference sensor and a **Reset** button (only when the binary sensor is enabled).
+- **History** — a compact timeline of the last 25 entries from `history_log`.
+- A **settings cog** (⚙️) opening a dialog to change, on the fly: enable/disable the physical-interaction sensor, reset lapse, click window and the occupancy/motion reference sensors. Saving calls `whodidit.update_options`, which reloads the entry so changes take effect immediately.
+
+> **Note on distribution.** HACS does not surface cards that live inside an *Integration* repository in its "Frontend" tab. That is expected: Whodidit serves the card as a static asset and registers it as a Lovelace resource itself, so it works without any manual resource entry (in Lovelace *storage* mode). In *YAML* mode add the resource manually: `url: /whodidit/whodidit-card.js`, `type: module`.
+
+## Caveats and limitations
 - **System restarts:** state changes that occur while HA is offline are not captured.
 - **ESPHome context bleed:** ESPHome devices may reuse the previous HA context for ~5s after a command; a physical press in that window can be misclassified as UI with `confidence: low`.
 - **Indirect automations:** deeply nested chains or third-party integrations that create their own context chains resolve to `Automation (Indirect)` at Medium confidence.
@@ -268,6 +287,11 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Version history
+
+### 1.2.0
+- New: bundled **Whodidit Card** (`custom:whodidit-card`) auto-registered by the integration — last interaction, physical-interaction block, 25-entry history timeline, and a settings cog to edit options live.
+- New: `whodidit.update_options` service backing the card's settings dialog.
+- Manifest now declares `frontend` + `http` dependencies for static-asset serving.
 
 ### 1.1.1
 - New: integration icon (magnifying glass over a `?` — the classic "who did it?" motif) added as `icon.png` / `icon@2x.png` in the component folder. Home Assistant shows it in the Integrations page automatically; on GitHub / HACS the same asset appears in the repo card.

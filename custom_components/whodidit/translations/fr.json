@@ -74,6 +74,20 @@
           "description": "L'entité suivie ou le capteur binaire d'interaction physique."
         }
       }
+    },
+    "update_options": {
+      "name": "Mettre à jour les options",
+      "description": "Met à jour les options d'interaction physique de l'entrée propriétaire de l'entité indiquée (utilisé par la carte Whodidit).",
+      "fields": {
+        "entity_id": {
+          "name": "Entité",
+          "description": "L'entité suivie ou toute entité Whodidit de l'entrée."
+        },
+        "options": {
+          "name": "Options",
+          "description": "Objet d'options partiel à fusionner dans l'entrée."
+        }
+      }
     }
   }
 }

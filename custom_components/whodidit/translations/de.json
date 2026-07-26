@@ -74,6 +74,20 @@
           "description": "Die überwachte Entität oder der Binärsensor für physische Interaktion."
         }
       }
+    },
+    "update_options": {
+      "name": "Optionen aktualisieren",
+      "description": "Aktualisiert die Optionen für physische Interaktion des Eintrags, dem die angegebene Entität gehört (von der Whodidit-Karte verwendet).",
+      "fields": {
+        "entity_id": {
+          "name": "Entität",
+          "description": "Die überwachte Entität oder eine beliebige Whodidit-Entität des Eintrags."
+        },
+        "options": {
+          "name": "Optionen",
+          "description": "Partielles Optionsobjekt, das in den Eintrag eingefügt wird."
+        }
+      }
     }
   }
 }

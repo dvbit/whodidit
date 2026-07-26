@@ -74,6 +74,20 @@
           "description": "The tracked entity or the physical-interaction binary sensor."
         }
       }
+    },
+    "update_options": {
+      "name": "Update options",
+      "description": "Update the physical-interaction options of the entry that owns the given entity (used by the Whodidit card).",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The tracked entity or any Whodidit entity of the target entry."
+        },
+        "options": {
+          "name": "Options",
+          "description": "Partial options object to merge into the entry."
+        }
+      }
     }
   }
 }

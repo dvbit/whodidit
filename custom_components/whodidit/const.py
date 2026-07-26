@@ -6,10 +6,33 @@ reimplementation inspired by sfox38/whodunnit, MIT licensed).
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+from typing import Final
+
 from homeassistant.const import Platform
 
 DOMAIN = "whodidit"
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
+
+# --- Frontend card distribution (spec v1.2.0) -------------------------------
+# Version is read from manifest.json so the card resource URL is
+# cache-busted (?v=...) on every release automatically.
+_MANIFEST_PATH = Path(__file__).parent / "manifest.json"
+with open(_MANIFEST_PATH, encoding="utf-8") as _mf:
+    INTEGRATION_VERSION: Final[str] = json.load(_mf).get("version", "0.0.0")
+
+# Base URL under which the card JS is served (registered as a static path).
+URL_BASE: Final[str] = "/whodidit"
+# JavaScript modules bundled with the integration and auto-registered as
+# Lovelace resources (storage mode).
+JSMODULES: Final[list[dict[str, str]]] = [
+    {
+        "name": "Whodidit Card",
+        "filename": "whodidit-card.js",
+        "version": INTEGRATION_VERSION,
+    }
+]
 
 # --- Event bus -------------------------------------------------------------
 # Spec: "Evento" -> whodidit_trigger_detected, fired on every classification
@@ -36,6 +59,8 @@ DEFAULT_CLICK_WINDOW_SECONDS = 3
 
 # --- Services (spec: "Servizio") --------------------------------------------
 SERVICE_RESET_PHYSICAL = "reset_physical_interaction"
+# v1.2.0: used by the card's settings dialog to update entry options.
+SERVICE_UPDATE_OPTIONS = "update_options"
 
 # --- Cache tuning (spec: "Advanced Tuning" equivalent) ----------------------
 # Time-to-live of a cached automation/script/scene context, in seconds.

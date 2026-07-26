@@ -74,6 +74,20 @@
           "description": "La entidad monitorizada o el sensor binario de interacción física."
         }
       }
+    },
+    "update_options": {
+      "name": "Actualizar opciones",
+      "description": "Actualiza las opciones de interacción física de la entrada propietaria de la entidad indicada (usado por la tarjeta Whodidit).",
+      "fields": {
+        "entity_id": {
+          "name": "Entidad",
+          "description": "La entidad monitorizada o cualquier entidad Whodidit de la entrada."
+        },
+        "options": {
+          "name": "Opciones",
+          "description": "Objeto de opciones parcial para fusionar en la entrada."
+        }
+      }
     }
   }
 }
