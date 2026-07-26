@@ -269,6 +269,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Storico versioni
 
+### 1.1.1
+- Novità: icona dell'integrazione (lente d'ingrandimento con un `?` — il motivo classico "chi è stato?") aggiunta come `icon.png` / `icon@2x.png` nella cartella del componente. Home Assistant la mostra automaticamente nella pagina Integrazioni; su GitHub / HACS lo stesso asset appare nella card del repo.
+
 ### 1.1.0
 - Novità: **sensore binario di interazione fisica** opzionale per entità con attributo `click_count` (modello ispirato a [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction)).
 - Novità: auto-reset a tre modalità (presenza > movimento > solo tempo) più reset manuale via nuovo servizio `whodidit.reset_physical_interaction`.

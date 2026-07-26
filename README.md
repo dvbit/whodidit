@@ -269,6 +269,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 1.1.1
+- New: integration icon (magnifying glass over a `?` — the classic "who did it?" motif) added as `icon.png` / `icon@2x.png` in the component folder. Home Assistant shows it in the Integrations page automatically; on GitHub / HACS the same asset appears in the repo card.
+
 ### 1.1.0
 - New: optional **Physical Interaction binary sensor** per tracked entity with `click_count` attribute (model inspired by [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction)).
 - New: three-mode auto-reset (occupancy > motion > time-only) plus manual reset via the new `whodidit.reset_physical_interaction` service.
