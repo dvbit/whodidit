@@ -144,8 +144,13 @@ class WhoditPhysicalInteractionSensor(RestoreEntity, BinarySensorEntity):
         last_state = await self.async_get_last_state()
         if last_state is not None:
             self._attr_is_on = last_state.state == STATE_ON
-            self._click_count = int(last_state.attributes.get(ATTR_CLICK_COUNT, 0) or 0)
             self._last_click_iso = last_state.attributes.get(ATTR_LAST_CLICK_TIME)
+            # NOTE (spec v1.2.1): click_count is a *per-train* counter tied
+            # to the live detection window, which does not survive a
+            # restart. We deliberately do NOT restore it - a new click
+            # train starts fresh at 1. Only is_on / last_click_time are
+            # meaningful to restore.
+            self._click_count = 0
 
         # Subscribe to physical-click hand-offs from the main sensor.
         self._unsub_click_listener = self._runtime.register_device_click_listener(
@@ -197,14 +202,26 @@ class WhoditPhysicalInteractionSensor(RestoreEntity, BinarySensorEntity):
 
     @callback
     def _async_close_click_window(self, _now) -> None:
-        """Click window expired - freeze the count and, if the binary is
-        still ON, start the reset-lapse logic."""
+        """Click window expired.
+
+        Spec (v1.2.1): click_count counts clicks *within the detection
+        window only* - a "click train". When the window closes, the count
+        is reset to 0 so the next physical click starts a fresh train at 1
+        (e.g. single click -> 1; after the window, a double click -> 2, not
+        3). This is independent from the binary sensor's reset lapse: the
+        binary can stay ON (reset-lapse logic) while the click counter has
+        already gone back to 0.
+        """
         self._unsub_click_window = None
         _LOGGER.debug(
-            "Whodidit: click window closed on %s with %d click(s)",
+            "Whodidit: click window closed on %s (train had %d click(s)), "
+            "resetting click_count",
             self._tracked_entity_id,
             self._click_count,
         )
+        # Reset the per-train counter but keep the binary ON; start the
+        # reset-lapse logic that governs the ON->OFF transition.
+        self._click_count = 0
         if self._attr_is_on:
             self._start_reset_logic()
         self.async_write_ha_state()

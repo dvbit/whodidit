@@ -17,7 +17,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "1.2.0";
+const CARD_VERSION = "1.2.1";
 
 // Confidence -> colour token (uses HA theme variables where possible).
 const CONFIDENCE_COLORS = {

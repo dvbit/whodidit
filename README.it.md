@@ -289,6 +289,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Storico versioni
 
+### 1.2.1
+- Fix: `click_count` ora conta i click **solo all'interno della finestra di rilevazione** (un "treno di click"). Alla chiusura della finestra il contatore si azzera, quindi il click fisico successivo riparte da 1 — un singolo click mostra 1, un doppio click successivo mostra 2 (non 3). Il contatore è indipendente dal tempo di reset del sensore binario e non viene più ripristinato al riavvio.
+
 ### 1.2.0
 - Novità: **card Whodidit** inclusa (`custom:whodidit-card`) auto-registrata dall'integrazione — ultima interazione, blocco interazione fisica, timeline storico (25 voci) e ingranaggio impostazioni per modificare le opzioni al volo.
 - Novità: servizio `whodidit.update_options` a supporto del dialog impostazioni della card.

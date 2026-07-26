@@ -288,6 +288,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 1.2.1
+- Fix: `click_count` now counts clicks **within the detection window only** (a "click train"). When the window closes the counter resets to 0, so the next physical click starts fresh at 1 — a single click shows 1, then a following double-click shows 2 (not 3). The counter is independent from the binary sensor's reset lapse and is no longer restored across restarts.
+
 ### 1.2.0
 - New: bundled **Whodidit Card** (`custom:whodidit-card`) auto-registered by the integration — last interaction, physical-interaction block, 25-entry history timeline, and a settings cog to edit options live.
 - New: `whodidit.update_options` service backing the card's settings dialog.
