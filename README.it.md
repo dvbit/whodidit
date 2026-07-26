@@ -292,10 +292,13 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Storico versioni
 
+### 1.3.5
+- L'integrazione ora include la **propria icona brand** in una cartella `brand/` (`brand/icon.png`, `brand/logo.png` + @2x). Da **Home Assistant 2026.3** le integrazioni custom possono fornire immagini brand locali, servite tramite il proxy HA `/api/brands/integration/whodidit/…` e con priorità sul CDN — nessuna PR a `home-assistant/brands` necessaria. L'icona appare nella pagina **Dispositivi e Servizi**, nelle pagine dispositivo e in tutto il frontend HA.
+- Nota: su versioni HA precedenti alla 2026.3 questa cartella è semplicemente ignorata (nessun problema). Un bug noto di HACS (hacs/integration#5171) fa sì che l'icona possa restare vuota nell'elenco store di HACS finché HACS non aggiunge il fallback all'API brands locale; ovunque altro in HA funziona.
+
 ### 1.3.4
 - Aggiunta l'icona del progetto in cima al README (visibile su GitHub e nel tab Info di HACS).
 - Le entità ora hanno icone mdi dinamiche nell'interfaccia di Home Assistant: il sensore sorgente-trigger cambia icona per stato (radar/robot/script/tavolozza/tap/ingranaggio/doppio-tap) e il sensore binario di interazione fisica mostra una mano attiva/inattiva.
-- Nota: l'icona dell'integrazione/brand mostrata nella pagina **Dispositivi e Servizi** proviene esclusivamente dal repository [home-assistant/brands](https://github.com/home-assistant/brands), non da un `icon.png` locale. Per quello specifico slot serve una pull request separata a brands; le icone mdi delle entità qui sopra sono indipendenti e funzionano subito.
 
 ### 1.3.3
 - Fix (card): `device` e `monitoring` non mostrano più l'etichetta "Device" duplicata — il nome sorgente ridondante è nascosto, resta solo l'orario.
