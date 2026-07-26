@@ -224,10 +224,9 @@ entity: sensor.kitchen_light_trigger_source
 
 The card shows:
 
-- **Last interaction** — state, source name, timestamp and a colour-coded confidence badge.
-- **Physical interaction** — ON/OFF, `click_count`, last click time, reference sensor and a **Reset** button (only when the binary sensor is enabled).
-- **History** — a compact timeline of the last 25 entries from `history_log`.
-- A **settings cog** (⚙️) opening a dialog to change, on the fly: enable/disable the physical-interaction sensor, reset lapse, click window and the occupancy/motion reference sensors. Saving calls `whodidit.update_options`, which reloads the entry so changes take effect immediately.
+- **Last interaction** — state icon, localized state and a small colour-coded confidence dot (green = high, amber = medium, red = low). Click the row to open a **history popup** with the last 25 entries.
+- **Physical interaction** — a discreet Active/Idle indicator plus `click_count` and last-click time (only when the binary sensor is enabled).
+- **Bottom-right controls** — a **reset** button (when the binary sensor exists) and a **settings cog** (⚙️) opening a dialog to change, on the fly: enable/disable the physical-interaction sensor, reset lapse, click window and the occupancy/motion reference sensors. Saving calls `whodidit.update_options`, which reloads the entry so changes take effect immediately.
 
 > **Note on distribution.** HACS does not surface cards that live inside an *Integration* repository in its "Frontend" tab. That is expected: Whodidit serves the card as a static asset and registers it as a Lovelace resource itself, so it works without any manual resource entry (in Lovelace *storage* mode). In *YAML* mode add the resource manually: `url: /whodidit/whodidit-card.js`, `type: module`.
 
@@ -287,6 +286,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Version history
+
+### 1.3.0
+- Redesign: the **Whodidit Card** is now minimalist and closer to native Lovelace styling. Confidence is shown as a small coloured dot (green/amber/red) instead of a text badge; clicking the state row opens a **history popup**; the reset and settings-cog controls sit at the bottom-right of the card.
 
 ### 1.2.1
 - Fix: `click_count` now counts clicks **within the detection window only** (a "click train"). When the window closes the counter resets to 0, so the next physical click starts fresh at 1 — a single click shows 1, then a following double-click shows 2 (not 3). The counter is independent from the binary sensor's reset lapse and is no longer restored across restarts.

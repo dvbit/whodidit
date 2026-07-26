@@ -224,10 +224,9 @@ entity: sensor.kitchen_light_trigger_source
 
 La card mostra:
 
-- **Ultima interazione** — stato, nome sorgente, timestamp e badge di confidenza colorato.
-- **Interazione fisica** — ON/OFF, `click_count`, ora ultimo click, sensore di riferimento e pulsante **Reset** (solo se il sensore binario è attivo).
-- **Storico** — timeline compatta delle ultime 25 voci di `history_log`.
-- Un **ingranaggio impostazioni** (⚙️) che apre un dialog per modificare al volo: attivazione sensore interazione fisica, tempo di reset, finestra click e sensori di riferimento presenza/movimento. Il salvataggio chiama `whodidit.update_options`, che ricarica l'entry rendendo effettive subito le modifiche.
+- **Ultima interazione** — icona stato, stato localizzato e un piccolo puntino di confidenza colorato (verde = alta, giallo = media, rosso = bassa). Clicca la riga per aprire un **popup storico** con le ultime 25 voci.
+- **Interazione fisica** — indicatore discreto Attivo/Inattivo più `click_count` e ora ultimo click (solo se il sensore binario è attivo).
+- **Controlli in basso a destra** — un pulsante **reset** (quando il sensore binario esiste) e un **ingranaggio impostazioni** (⚙️) che apre un dialog per modificare al volo: attivazione sensore interazione fisica, tempo di reset, finestra click e sensori di riferimento presenza/movimento. Il salvataggio chiama `whodidit.update_options`, che ricarica l'entry rendendo effettive subito le modifiche.
 
 > **Nota sulla distribuzione.** HACS non mostra nel tab "Frontend" le card che vivono in un repository di tipo *Integration*. È previsto: Whodidit serve la card come asset statico e la registra da sé come risorsa Lovelace, quindi funziona senza aggiungere manualmente la risorsa (in modalità Lovelace *storage*). In modalità *YAML* aggiungi la risorsa a mano: `url: /whodidit/whodidit-card.js`, `type: module`.
 
@@ -288,6 +287,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Storico versioni
+
+### 1.3.0
+- Redesign: la **card Whodidit** è ora minimalista e più vicina allo stile Lovelace nativo. La confidenza è mostrata come piccolo puntino colorato (verde/giallo/rosso) invece del badge testuale; cliccando sulla riga stato si apre un **popup storico**; i controlli reset e ingranaggio impostazioni sono in basso a destra della card.
 
 ### 1.2.1
 - Fix: `click_count` ora conta i click **solo all'interno della finestra di rilevazione** (un "treno di click"). Alla chiusura della finestra il contatore si azzera, quindi il click fisico successivo riparte da 1 — un singolo click mostra 1, un doppio click successivo mostra 2 (non 3). Il contatore è indipendente dal tempo di reset del sensore binario e non viene più ripristinato al riavvio.

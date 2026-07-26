@@ -1,32 +1,37 @@
 /**
- * Whodidit Card  (spec v1.2.0)
+ * Whodidit Card  (spec v1.3.0)
  * ---------------------------------------------------------------------------
- * A single custom Lovelace card that presents, for one tracked entity:
- *   - the last interaction  (state / source_name / event_time / confidence)
- *   - the physical-interaction block (when the binary sensor is enabled):
- *       on-off state, click_count, last_click_time, reference sensor, RESET
- *   - a compact history timeline built from the sensor's history_log
- *   - a settings cog opening a dialog that edits the config-entry options
- *     dynamically via the whodidit.update_options service.
+ * Minimalist Lovelace card for one tracked entity. Layout:
  *
- * Written in framework-free vanilla JS so it needs no build step and can be
- * shipped as-is inside the integration.
+ *   ┌───────────────────────────────────────────────┐
+ *   │ <icon>  Last interaction                       │
+ *   │         Device                         ● (conf)│   <- click row -> history popup
+ *   │         2 min ago                               │
+ *   │ ───────────────────────────────────────────────│
+ *   │ <icon>  Physical    ● ON   ·   3 clicks         │   (only if binary enabled)
+ *   │         last click 12:03                         │
+ *   │                                        ↻   ⚙    │   <- reset + settings, bottom-right
+ *   └───────────────────────────────────────────────┘
+ *
+ * - Confidence is shown as a small coloured dot (green/amber/red), no text.
+ * - Clicking the last-interaction row opens a history popup (history_log).
+ * - Reset and the settings cog live at the bottom-right of the card.
+ *
+ * Framework-free vanilla JS (no build step).
  *
  * Config:
  *   type: custom:whodidit-card
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "1.2.1";
+const CARD_VERSION = "1.3.0";
 
-// Confidence -> colour token (uses HA theme variables where possible).
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
   medium: "var(--warning-color, #ffa600)",
   low: "var(--error-color, #db4437)",
 };
 
-// State slug -> icon (mdi) for the "last interaction" header.
 const STATE_ICONS = {
   monitoring: "mdi:radar",
   automation: "mdi:robot",
@@ -43,10 +48,10 @@ class WhoditCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._config = null;
     this._hass = null;
-    this._dialogOpen = false;
+    this._historyOpen = false;
+    this._settingsOpen = false;
   }
 
-  // ----- Lovelace lifecycle -------------------------------------------------
   static getStubConfig() {
     return { entity: "" };
   }
@@ -60,7 +65,7 @@ class WhoditCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 4;
+    return 3;
   }
 
   set hass(hass) {
@@ -69,23 +74,17 @@ class WhoditCard extends HTMLElement {
   }
 
   // ----- Helpers ------------------------------------------------------------
-  /** Resolve the physical-interaction binary sensor that belongs to the same
-   *  config entry as the configured trigger-source sensor. We match on the
-   *  device: both entities share the same device_id. */
   _findBinarySensor() {
     if (!this._hass) return null;
     const src = this._hass.states[this._config.entity];
     if (!src) return null;
-    // Look for a binary_sensor whose attributes.tracked_entity matches this
-    // sensor's own tracked entity (the binary sensor exposes tracked_entity).
-    // Fallback: match by naming convention.
     const trackedGuess = this._config.entity
       .replace(/^sensor\./, "")
       .replace(/_trigger_source$/, "");
     for (const [eid, st] of Object.entries(this._hass.states)) {
       if (!eid.startsWith("binary_sensor.")) continue;
       const attrs = st.attributes || {};
-      if (attrs.click_count === undefined) continue; // not ours
+      if (attrs.click_count === undefined) continue;
       if (
         eid.includes(trackedGuess) ||
         (attrs.tracked_entity && attrs.tracked_entity === src.attributes.source_id)
@@ -93,151 +92,159 @@ class WhoditCard extends HTMLElement {
         return st;
       }
     }
-    // Last resort: any whodidit binary sensor referencing this device.
     return null;
   }
 
-  _fmtTime(iso) {
+  _relTime(iso) {
     if (!iso) return "—";
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString();
-    } catch (e) {
-      return iso;
-    }
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    const secs = Math.round((Date.now() - d.getTime()) / 1000);
+    if (secs < 5) return "just now";
+    if (secs < 60) return `${secs}s ago`;
+    const mins = Math.round(secs / 60);
+    if (mins < 60) return `${mins} min ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `${hrs} h ago`;
+    return d.toLocaleString();
+  }
+
+  _absTime(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return isNaN(d) ? iso : d.toLocaleString();
   }
 
   _localizeState(slug) {
-    // Reuse HA's own translated state name if available.
-    const src = this._hass?.states[this._config.entity];
-    if (src) {
-      const key = `component.whodidit.entity.sensor.trigger_source.state.${slug}`;
-      const t = this._hass.localize?.(key);
-      if (t) return t;
-    }
-    return slug;
+    const key = `component.whodidit.entity.sensor.trigger_source.state.${slug}`;
+    const t = this._hass?.localize?.(key);
+    return t || slug;
   }
 
-  // ----- Rendering ----------------------------------------------------------
+  // ----- Render -------------------------------------------------------------
   _render() {
     if (!this._config) return;
     const hass = this._hass;
     const src = hass ? hass.states[this._config.entity] : null;
 
     if (!src) {
-      this.shadowRoot.innerHTML = `
-        ${this._styles()}
-        <ha-card>
-          <div class="pad">
-            <div class="unavailable">Entity <code>${this._config.entity || "—"}</code> not found.</div>
-          </div>
-        </ha-card>`;
+      this.shadowRoot.innerHTML = `${this._styles()}
+        <ha-card><div class="empty">Entity <code>${this._config.entity || "—"}</code> not found.</div></ha-card>`;
       return;
     }
 
     const a = src.attributes || {};
     const slug = src.state;
-    const confidence = a.confidence || "—";
-    const confColor = CONFIDENCE_COLORS[confidence] || "var(--secondary-text-color)";
-    const stateIcon = STATE_ICONS[slug] || "mdi:help-circle";
+    const conf = a.confidence;
+    const confColor = CONFIDENCE_COLORS[conf] || "var(--disabled-text-color, #9e9e9e)";
+    const icon = STATE_ICONS[slug] || "mdi:help-circle";
     const bs = this._findBinarySensor();
 
-    const historyRows = (a.history_log || [])
-      .slice(0, 25)
-      .map((h) => {
-        const c = CONFIDENCE_COLORS[h.confidence] || "var(--secondary-text-color)";
-        return `
-          <div class="tl-row">
-            <span class="tl-dot" style="background:${c}"></span>
-            <span class="tl-time">${this._fmtTime(h.event_time)}</span>
-            <span class="tl-src">${this._localizeState(
-              h.source_type === "user" ? "ui" : h.source_type
-            )}</span>
-            <span class="tl-name">${h.source_name || ""}</span>
-          </div>`;
-      })
-      .join("");
-
-    const physicalBlock = bs
+    const physicalRow = bs
       ? `
-        <div class="section">
-          <div class="section-title">
-            <ha-icon icon="mdi:hand-back-right"></ha-icon> Physical interaction
-          </div>
-          <div class="grid">
-            <div class="lbl">State</div>
-            <div class="val">
-              <span class="pill ${bs.state === "on" ? "on" : "off"}">${bs.state.toUpperCase()}</span>
+        <div class="divider"></div>
+        <div class="row physical">
+          <ha-icon class="row-icon" icon="mdi:hand-back-right"></ha-icon>
+          <div class="row-main">
+            <div class="row-line">
+              <span class="pstate ${bs.state === "on" ? "on" : "off"}">
+                <span class="pdot"></span>${bs.state === "on" ? "Active" : "Idle"}
+              </span>
+              <span class="sep">·</span>
+              <span class="clicks">${bs.attributes.click_count ?? 0} ${
+          (bs.attributes.click_count ?? 0) === 1 ? "click" : "clicks"
+        }</span>
             </div>
-            <div class="lbl">Click count</div>
-            <div class="val big">${bs.attributes.click_count ?? 0}</div>
-            <div class="lbl">Last click</div>
-            <div class="val">${this._fmtTime(bs.attributes.last_click_time)}</div>
-            <div class="lbl">Reference sensor</div>
-            <div class="val">${bs.attributes.reference_sensor || "— (time only)"}</div>
-          </div>
-          <div class="actions">
-            <button class="btn" id="reset-btn">
-              <ha-icon icon="mdi:restore"></ha-icon> Reset
-            </button>
+            <div class="row-sub">last click ${this._relTime(bs.attributes.last_click_time)}</div>
           </div>
         </div>`
-      : `
-        <div class="section muted">
-          <ha-icon icon="mdi:hand-back-right-off"></ha-icon>
-          Physical-interaction sensor disabled — enable it from the settings cog.
-        </div>`;
+      : "";
 
-    this.shadowRoot.innerHTML = `
-      ${this._styles()}
+    this.shadowRoot.innerHTML = `${this._styles()}
       <ha-card>
-        <div class="header">
-          <div class="title">
-            <ha-icon icon="mdi:magnify-scan"></ha-icon>
-            <span>${a.friendly_name || this._config.entity}</span>
-          </div>
-          <ha-icon-button id="cog" title="Settings">
-            <ha-icon icon="mdi:cog"></ha-icon>
-          </ha-icon-button>
-        </div>
-
-        <div class="section">
-          <div class="section-title">
-            <ha-icon icon="mdi:clock-outline"></ha-icon> Last interaction
-          </div>
-          <div class="last">
-            <ha-icon class="big-icon" icon="${stateIcon}"></ha-icon>
-            <div class="last-main">
-              <div class="last-state">${this._localizeState(slug)}</div>
-              <div class="last-src">${a.source_name || "—"}</div>
-              <div class="last-time">${this._fmtTime(a.event_time)}</div>
+        <div class="body">
+          <div class="row state-row" id="state-row" title="Show history">
+            <ha-icon class="row-icon" icon="${icon}"></ha-icon>
+            <div class="row-main">
+              <div class="row-line">
+                <span class="state">${this._localizeState(slug)}</span>
+                <span class="conf-dot" style="background:${confColor}" title="${conf || "unknown"}"></span>
+              </div>
+              <div class="row-sub">${a.source_name ? a.source_name + " · " : ""}${this._relTime(a.event_time)}</div>
             </div>
-            <span class="conf" style="background:${confColor}">${confidence}</span>
+            <ha-icon class="chevron" icon="mdi:chevron-right"></ha-icon>
           </div>
+          ${physicalRow}
         </div>
-
-        ${physicalBlock}
-
-        ${
-          historyRows
-            ? `<div class="section">
-                 <div class="section-title">
-                   <ha-icon icon="mdi:timeline-clock-outline"></ha-icon> History
-                 </div>
-                 <div class="timeline">${historyRows}</div>
-               </div>`
-            : ""
-        }
+        <div class="footer">
+          ${
+            bs
+              ? `<ha-icon-button id="reset-btn" title="Reset physical interaction"><ha-icon icon="mdi:restore"></ha-icon></ha-icon-button>`
+              : ""
+          }
+          <ha-icon-button id="cog-btn" title="Settings"><ha-icon icon="mdi:cog-outline"></ha-icon></ha-icon-button>
+        </div>
       </ha-card>`;
 
-    // Wire up interactions.
-    const cog = this.shadowRoot.getElementById("cog");
+    const stateRow = this.shadowRoot.getElementById("state-row");
+    if (stateRow) stateRow.addEventListener("click", () => this._openHistory());
+    const cog = this.shadowRoot.getElementById("cog-btn");
     if (cog) cog.addEventListener("click", () => this._openSettings());
-    const resetBtn = this.shadowRoot.getElementById("reset-btn");
-    if (resetBtn)
-      resetBtn.addEventListener("click", () => this._callReset(bs.entity_id));
+    const reset = this.shadowRoot.getElementById("reset-btn");
+    if (reset && bs) reset.addEventListener("click", () => this._callReset(bs.entity_id));
 
-    if (this._dialogOpen) this._renderDialog();
+    if (this._historyOpen) this._renderHistory();
+    if (this._settingsOpen) this._renderSettings();
+  }
+
+  // ----- History popup ------------------------------------------------------
+  _openHistory() {
+    this._historyOpen = true;
+    this._renderHistory();
+  }
+  _closeHistory() {
+    this._historyOpen = false;
+    const d = this.shadowRoot.getElementById("wd-history");
+    if (d) d.remove();
+  }
+  _renderHistory() {
+    const old = this.shadowRoot.getElementById("wd-history");
+    if (old) old.remove();
+    const src = this._hass.states[this._config.entity];
+    const log = (src?.attributes?.history_log || []).slice(0, 25);
+
+    const rows =
+      log
+        .map((h) => {
+          const c = CONFIDENCE_COLORS[h.confidence] || "var(--disabled-text-color)";
+          const label = this._localizeState(h.source_type === "user" ? "ui" : h.source_type);
+          return `
+            <div class="h-row">
+              <span class="h-dot" style="background:${c}"></span>
+              <div class="h-main">
+                <div class="h-top"><span class="h-src">${label}</span>${
+            h.source_name ? `<span class="h-name">${h.source_name}</span>` : ""
+          }</div>
+                <div class="h-time">${this._absTime(h.event_time)}</div>
+              </div>
+            </div>`;
+        })
+        .join("") || `<div class="h-empty">No history yet.</div>`;
+
+    const wrap = document.createElement("div");
+    wrap.id = "wd-history";
+    wrap.innerHTML = `
+      <div class="backdrop"></div>
+      <div class="sheet">
+        <div class="sheet-head">
+          <span><ha-icon icon="mdi:timeline-clock-outline"></ha-icon> History</span>
+          <ha-icon-button id="h-close"><ha-icon icon="mdi:close"></ha-icon></ha-icon-button>
+        </div>
+        <div class="sheet-body">${rows}</div>
+      </div>`;
+    this.shadowRoot.appendChild(wrap);
+    wrap.querySelector(".backdrop").addEventListener("click", () => this._closeHistory());
+    wrap.querySelector("#h-close").addEventListener("click", () => this._closeHistory());
   }
 
   // ----- Actions ------------------------------------------------------------
@@ -254,75 +261,75 @@ class WhoditCard extends HTMLElement {
   _currentOptions() {
     const bs = this._findBinarySensor();
     return {
-      enable_physical_interaction: !!bs,
-      reset_lapse_seconds: bs ? bs.attributes.reset_lapse_seconds ?? 300 : 300,
-      click_window_seconds: bs ? bs.attributes.click_window_seconds ?? 3 : 3,
-      reference_sensor: bs ? bs.attributes.reference_sensor || "" : "",
+      enable: !!bs,
+      lapse: bs ? bs.attributes.reset_lapse_seconds ?? 300 : 300,
+      click: bs ? bs.attributes.click_window_seconds ?? 3 : 3,
+      ref: bs ? bs.attributes.reference_sensor || "" : "",
     };
   }
 
+  // ----- Settings dialog ----------------------------------------------------
   _openSettings() {
-    this._dialogOpen = true;
-    this._renderDialog();
+    this._settingsOpen = true;
+    this._renderSettings();
   }
-
   _closeSettings() {
-    this._dialogOpen = false;
-    const d = this.shadowRoot.getElementById("wd-dialog");
+    this._settingsOpen = false;
+    const d = this.shadowRoot.getElementById("wd-settings");
     if (d) d.remove();
   }
-
-  _renderDialog() {
-    // Remove any previous instance.
-    const old = this.shadowRoot.getElementById("wd-dialog");
+  _renderSettings() {
+    const old = this.shadowRoot.getElementById("wd-settings");
     if (old) old.remove();
-
-    const opts = this._currentOptions();
+    const o = this._currentOptions();
     const wrap = document.createElement("div");
-    wrap.id = "wd-dialog";
+    wrap.id = "wd-settings";
     wrap.innerHTML = `
       <div class="backdrop"></div>
-      <div class="dialog">
-        <div class="dialog-title">
-          <ha-icon icon="mdi:cog"></ha-icon> Whodidit settings
+      <div class="sheet">
+        <div class="sheet-head">
+          <span><ha-icon icon="mdi:cog-outline"></ha-icon> Settings</span>
+          <ha-icon-button id="s-close"><ha-icon icon="mdi:close"></ha-icon></ha-icon-button>
         </div>
-        <label class="row switch-row">
-          <span>Enable physical-interaction sensor</span>
-          <input type="checkbox" id="f-enable" ${opts.enable_physical_interaction ? "checked" : ""}/>
-        </label>
-        <label class="row">
-          <span>Reset lapse (seconds)</span>
-          <input type="number" min="1" max="86400" id="f-lapse" value="${opts.reset_lapse_seconds}"/>
-        </label>
-        <label class="row">
-          <span>Click window (seconds)</span>
-          <input type="number" min="1" max="60" id="f-click" value="${opts.click_window_seconds}"/>
-        </label>
-        <label class="row">
-          <span>Occupancy sensor (priority)</span>
-          <input type="text" id="f-occ" placeholder="binary_sensor.…" value="${
-            opts.reference_sensor.startsWith("binary_sensor") ? opts.reference_sensor : ""
-          }"/>
-        </label>
-        <label class="row">
-          <span>Motion sensor (fallback)</span>
-          <input type="text" id="f-motion" placeholder="binary_sensor.…" value=""/>
-        </label>
-        <div class="dialog-actions">
-          <button class="btn ghost" id="cancel-btn">Cancel</button>
-          <button class="btn primary" id="save-btn">Save</button>
+        <div class="sheet-body form">
+          <label class="frow switch">
+            <span>Physical-interaction sensor</span>
+            <input type="checkbox" id="f-enable" ${o.enable ? "checked" : ""}/>
+          </label>
+          <label class="frow">
+            <span>Reset lapse (s)</span>
+            <input type="number" min="1" max="86400" id="f-lapse" value="${o.lapse}"/>
+          </label>
+          <label class="frow">
+            <span>Click window (s)</span>
+            <input type="number" min="1" max="60" id="f-click" value="${o.click}"/>
+          </label>
+          <label class="frow">
+            <span>Occupancy sensor</span>
+            <input type="text" id="f-occ" placeholder="binary_sensor.…" value="${
+              o.ref.startsWith("binary_sensor") ? o.ref : ""
+            }"/>
+          </label>
+          <label class="frow">
+            <span>Motion sensor</span>
+            <input type="text" id="f-motion" placeholder="binary_sensor.…" value=""/>
+          </label>
+          <div class="hint">Occupancy takes priority. Leave both empty for time-only reset.</div>
         </div>
-        <div class="hint">Occupancy takes priority over motion. Leave both empty for time-only reset.</div>
+        <div class="sheet-actions">
+          <button class="btn ghost" id="s-cancel">Cancel</button>
+          <button class="btn primary" id="s-save">Save</button>
+        </div>
       </div>`;
-
     this.shadowRoot.appendChild(wrap);
     wrap.querySelector(".backdrop").addEventListener("click", () => this._closeSettings());
-    wrap.querySelector("#cancel-btn").addEventListener("click", () => this._closeSettings());
-    wrap.querySelector("#save-btn").addEventListener("click", () => this._saveSettings());
+    wrap.querySelector("#s-close").addEventListener("click", () => this._closeSettings());
+    wrap.querySelector("#s-cancel").addEventListener("click", () => this._closeSettings());
+    wrap.querySelector("#s-save").addEventListener("click", () => this._saveSettings());
   }
 
   async _saveSettings() {
-    const d = this.shadowRoot.getElementById("wd-dialog");
+    const d = this.shadowRoot.getElementById("wd-settings");
     if (!d) return;
     const enable = d.querySelector("#f-enable").checked;
     const lapse = parseInt(d.querySelector("#f-lapse").value, 10);
@@ -356,74 +363,81 @@ class WhoditCard extends HTMLElement {
 
   // ----- Styles -------------------------------------------------------------
   _styles() {
-    return `
-      <style>
-        ha-card { overflow: hidden; }
-        .pad { padding: 16px; }
-        .unavailable { color: var(--error-color); }
-        .header {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 12px 12px 4px 16px;
-        }
-        .title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 1.1rem; }
-        .title ha-icon { color: var(--primary-color); }
-        .section { padding: 8px 16px 14px 16px; border-top: 1px solid var(--divider-color); }
-        .section.muted { color: var(--secondary-text-color); display:flex; align-items:center; gap:8px; font-size:.9rem; }
-        .section-title { display:flex; align-items:center; gap:6px; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; color: var(--secondary-text-color); margin-bottom: 8px; }
-        .last { display:flex; align-items:center; gap:14px; }
-        .big-icon { --mdc-icon-size: 40px; color: var(--primary-color); }
-        .last-main { flex: 1; }
-        .last-state { font-size: 1.15rem; font-weight: 600; text-transform: capitalize; }
-        .last-src { color: var(--primary-text-color); }
-        .last-time { color: var(--secondary-text-color); font-size: .85rem; }
-        .conf { color: #fff; padding: 2px 10px; border-radius: 12px; font-size: .75rem; text-transform: capitalize; }
-        .grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: center; }
-        .lbl { color: var(--secondary-text-color); font-size: .85rem; }
-        .val { font-size: .95rem; }
-        .val.big { font-size: 1.4rem; font-weight: 700; }
-        .pill { padding: 2px 10px; border-radius: 12px; font-size: .75rem; color:#fff; }
-        .pill.on { background: var(--success-color, #43a047); }
-        .pill.off { background: var(--secondary-text-color); }
-        .actions { margin-top: 10px; display:flex; justify-content:flex-end; }
-        .btn { display:inline-flex; align-items:center; gap:6px; border:none; cursor:pointer;
-               padding:6px 14px; border-radius:8px; font-size:.85rem;
-               background: var(--secondary-background-color); color: var(--primary-text-color); }
-        .btn.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-        .btn.ghost { background: transparent; color: var(--secondary-text-color); }
-        .timeline { max-height: 220px; overflow-y: auto; }
-        .tl-row { display:grid; grid-template-columns: 12px 150px 90px 1fr; gap:8px; align-items:center;
-                  padding: 3px 0; font-size:.82rem; border-bottom: 1px dashed var(--divider-color); }
-        .tl-dot { width:10px; height:10px; border-radius:50%; }
-        .tl-time { color: var(--secondary-text-color); }
-        .tl-src { text-transform: capitalize; font-weight: 600; }
-        .tl-name { color: var(--secondary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    return `<style>
+      ha-card { display: flex; flex-direction: column; overflow: hidden; }
+      .empty { padding: 16px; color: var(--error-color); }
+      .body { padding: 4px 4px 0 4px; }
 
-        #wd-dialog .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 8; }
-        #wd-dialog .dialog { position: fixed; z-index: 9; top: 50%; left: 50%; transform: translate(-50%,-50%);
-              width: min(420px, 92vw); background: var(--card-background-color, #fff); color: var(--primary-text-color);
-              border-radius: 14px; padding: 18px; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
-        #wd-dialog .dialog-title { display:flex; align-items:center; gap:8px; font-weight:700; font-size:1.05rem; margin-bottom: 12px; }
-        #wd-dialog .row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin: 8px 0; }
-        #wd-dialog .row span { font-size:.9rem; }
-        #wd-dialog input[type=number], #wd-dialog input[type=text] {
-              flex: 0 0 auto; width: 180px; padding: 6px 8px; border-radius:8px;
-              border:1px solid var(--divider-color); background: var(--secondary-background-color); color: inherit; }
-        #wd-dialog .switch-row input { width: 20px; height: 20px; }
-        #wd-dialog .dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top: 14px; }
-        #wd-dialog .hint { margin-top: 10px; font-size:.78rem; color: var(--secondary-text-color); }
-      </style>`;
+      .row { display: flex; align-items: center; gap: 14px; padding: 12px 12px; border-radius: 12px; }
+      .state-row { cursor: pointer; transition: background .15s; }
+      .state-row:hover { background: var(--secondary-background-color); }
+      .row-icon { --mdc-icon-size: 26px; color: var(--primary-color); flex: 0 0 auto; }
+      .row-main { flex: 1; min-width: 0; }
+      .row-line { display: flex; align-items: center; gap: 8px; }
+      .state { font-size: 1.05rem; font-weight: 600; text-transform: capitalize; }
+      .conf-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 2px var(--card-background-color); }
+      .row-sub { color: var(--secondary-text-color); font-size: .82rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .chevron { --mdc-icon-size: 20px; color: var(--secondary-text-color); flex: 0 0 auto; }
+
+      .divider { height: 1px; background: var(--divider-color); margin: 2px 12px; }
+
+      .physical .row-line { gap: 6px; font-size: .92rem; }
+      .pstate { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+      .pstate .pdot { width: 8px; height: 8px; border-radius: 50%; }
+      .pstate.on { color: var(--success-color, #43a047); }
+      .pstate.on .pdot { background: var(--success-color, #43a047); }
+      .pstate.off { color: var(--secondary-text-color); }
+      .pstate.off .pdot { background: var(--disabled-text-color, #9e9e9e); }
+      .sep { color: var(--secondary-text-color); }
+      .clicks { color: var(--primary-text-color); }
+
+      .footer { display: flex; justify-content: flex-end; align-items: center; gap: 2px; padding: 2px 6px 6px 6px; }
+      .footer ha-icon-button { --mdc-icon-size: 20px; color: var(--secondary-text-color); }
+
+      .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 8; }
+      .sheet { position: fixed; z-index: 9; left: 50%; bottom: 0; transform: translateX(-50%);
+               width: min(460px, 100vw); background: var(--card-background-color, #fff);
+               color: var(--primary-text-color); border-radius: 16px 16px 0 0;
+               box-shadow: 0 -6px 30px rgba(0,0,0,.35); max-height: 80vh; display: flex; flex-direction: column; }
+      @media (min-width: 620px) {
+        .sheet { top: 50%; bottom: auto; transform: translate(-50%,-50%); border-radius: 16px; }
+      }
+      .sheet-head { display: flex; align-items: center; justify-content: space-between;
+                    padding: 14px 8px 14px 18px; font-weight: 700; border-bottom: 1px solid var(--divider-color); }
+      .sheet-head span { display: inline-flex; align-items: center; gap: 8px; }
+      .sheet-body { padding: 10px 16px; overflow-y: auto; }
+      .sheet-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--divider-color); }
+
+      .h-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--divider-color); }
+      .h-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: 0 0 auto; }
+      .h-main { flex: 1; min-width: 0; }
+      .h-top { display: flex; gap: 8px; align-items: baseline; }
+      .h-src { font-weight: 600; text-transform: capitalize; }
+      .h-name { color: var(--secondary-text-color); font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .h-time { color: var(--secondary-text-color); font-size: .78rem; }
+      .h-empty { color: var(--secondary-text-color); padding: 16px 0; text-align: center; }
+
+      .form .frow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; }
+      .form .frow span { font-size: .9rem; }
+      .form input[type=number], .form input[type=text] { width: 190px; padding: 7px 9px; border-radius: 8px;
+              border: 1px solid var(--divider-color); background: var(--secondary-background-color); color: inherit; }
+      .form .switch input { width: 20px; height: 20px; }
+      .hint { margin-top: 8px; font-size: .78rem; color: var(--secondary-text-color); }
+      .btn { border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; font-size: .88rem; }
+      .btn.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+      .btn.ghost { background: transparent; color: var(--secondary-text-color); }
+    </style>`;
   }
 }
 
 customElements.define("whodidit-card", WhoditCard);
 
-// Card picker registration.
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "whodidit-card",
   name: "Whodidit Card",
   preview: true,
-  description: "Shows who/what last triggered an entity, physical clicks and history, with a settings cog.",
+  description: "Minimal card: who/what last triggered an entity, physical clicks, history popup and live settings.",
 });
 
 console.info(
