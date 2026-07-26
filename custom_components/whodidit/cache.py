@@ -157,21 +157,58 @@ class TriggerCache:
 
     @callback
     def _async_handle_call_service(self, event: Event) -> None:
-        """Only scene.turn_on is cached here; other domains are not needed
-        because automation/script already emit their own dedicated events,
-        and every other action's state changes carry a parent_id pointing
-        back to whichever of those cached the actual context.
+        """Cache service-call contexts so that resulting state changes can
+        be attributed correctly.
+
+        Two cases:
+
+        1. scene.turn_on -> cache as SOURCE_SCENE (scenes have no dedicated
+           activation event).
+
+        2. ANY service call that carries a user_id -> cache as a user/UI
+           (or service-account) context. This is essential because Home
+           Assistant frequently emits the *resulting* state_changed event
+           with `user_id = None` while keeping only `parent_id` pointing
+           back to this service call (documented behaviour, core issue
+           #90669). Without caching the UI service-call context here, a
+           dashboard tap would lose its user_id by the time the state
+           change arrives and fall through to "device". We cache it under
+           the service-call context id so cascade step 3 (parent_id
+           lookup) resolves it to the correct UI/user source.
+
+        Automations and scripts still emit their own dedicated events, so
+        their service calls (which have no direct user_id) are ignored here
+        and handled by _async_handle_automation / _async_handle_script.
         """
-        if event.data.get("domain") != "scene" or event.data.get("service") != "turn_on":
+        domain = event.data.get("domain")
+        service = event.data.get("service")
+
+        # Case 1: scene activation.
+        if domain == "scene" and service == "turn_on":
+            target = event.data.get("service_data", {}).get("entity_id")
+            if isinstance(target, list):
+                target = target[0] if target else None
+            if target:
+                state = self.hass.states.get(target)
+                name = state.attributes.get("friendly_name", target) if state else target
+                self._context_cache[event.context.id] = _CacheEntry(
+                    SOURCE_SCENE, target, name
+                )
             return
-        target = event.data.get("service_data", {}).get("entity_id")
-        if isinstance(target, list):
-            target = target[0] if target else None
-        if not target:
-            return
-        state = self.hass.states.get(target)
-        name = state.attributes.get("friendly_name", target) if state else target
-        self._context_cache[event.context.id] = _CacheEntry(SOURCE_SCENE, target, name)
+
+        # Case 2: any user-initiated service call (dashboard, app, API with
+        # a token bound to a user). We resolve the display name lazily at
+        # classification time; here we only need to remember that this
+        # context originated from a user/service account.
+        if event.context.user_id:
+            # Mark with SOURCE_USER as a provisional type; the actual
+            # user-vs-service distinction and display name are resolved in
+            # async_classify via _async_resolve_user when this entry is hit
+            # through parent_id. We store the user_id in source_id so the
+            # resolver can be applied later.
+            self._context_cache[event.context.id] = _CacheEntry(
+                SOURCE_USER, event.context.user_id, ""
+            )
 
     @callback
     def _async_cleanup(self, _now) -> None:
@@ -254,6 +291,22 @@ class TriggerCache:
         if context.parent_id:
             parent_entry = self._context_cache.get(context.parent_id)
             if parent_entry is not None:
+                # Special case: the parent is a cached UI/user service call
+                # (see _async_handle_call_service case 2). Resolve the
+                # user's display name and user-vs-service distinction now.
+                if parent_entry.source_type == SOURCE_USER and not parent_entry.source_name:
+                    name, is_service = await self._async_resolve_user(parent_entry.source_id)
+                    source_type = SOURCE_SERVICE if is_service else SOURCE_USER
+                    cache_debug["matched_entry"] = {
+                        "type": source_type,
+                        "source_id": parent_entry.source_id,
+                        "context_id": context.parent_id[:8],
+                        "resolved_via": "parent_id (ui service call)",
+                    }
+                    return ClassificationResult(
+                        source_type, parent_entry.source_id, name, "high", cache_debug
+                    )
+
                 cache_debug["matched_entry"] = {
                     "type": parent_entry.source_type,
                     "source_id": parent_entry.source_id,

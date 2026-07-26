@@ -287,6 +287,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 1.3.1
+- Fix: UI/dashboard actions were sometimes misclassified as `device`. Home Assistant frequently emits the resulting `state_changed` event with `user_id = None`, keeping only `parent_id` pointing back to the originating service call (core behaviour, see core issue #90669). Whodidit now caches every user-initiated service-call context and resolves it via `parent_id`, so dashboard taps are correctly reported as `ui` (or `service` for service accounts). Note: a few integrations emit a brand-new context with neither `user_id` nor `parent_id` preserved; those changes remain indistinguishable from a physical `device` event at the context level.
+
 ### 1.3.0
 - Redesign: the **Whodidit Card** is now minimalist and closer to native Lovelace styling. Confidence is shown as a small coloured dot (green/amber/red) instead of a text badge; clicking the state row opens a **history popup**; the reset and settings-cog controls sit at the bottom-right of the card.
 
