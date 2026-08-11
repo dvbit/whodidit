@@ -92,29 +92,47 @@ async def async_setup_entry(
 
 
 def _resolve_device_info(hass: HomeAssistant, entry: ConfigEntry, tracked_entity_id: str) -> DeviceInfo:
-    """Attach to the tracked entity's existing device, or build a virtual
-    one for helpers with no physical device (spec: "Helper and Virtual
-    Devices")."""
+    """Return the DeviceInfo for this entry's whodidit entities.
+
+    Design (deterministic, avoids the duplicate/orphan-device problem):
+    Whodidit ALWAYS creates its own named service device, keyed on the
+    config entry id. When the tracked entity belongs to a physical device,
+    we nest our device under it via `via_device`, so the whodidit entities
+    appear as a child device of the real one instead of trying to merge
+    into it. Merging into another integration's device by copying its
+    identifiers/connections is deprecated and used to silently fork an
+    orphan device (HA dev blog 2026-07-21) - which is exactly the "entities
+    with no device" symptom. `via_device` is the supported way to express
+    the relationship without taking ownership.
+
+    For helper/template entities with no physical device, the same named
+    service device is created standalone (no via_device).
+    """
     ent_reg = er.async_get(hass)
     dev_reg = dr.async_get(hass)
 
-    tracked_entry = ent_reg.async_get(tracked_entity_id)
-    if tracked_entry and tracked_entry.device_id:
-        device = dev_reg.async_get(tracked_entry.device_id)
-        if device is not None:
-            # Reuse the existing device's identifiers/connections so this
-            # entity is shown on the same device page, without owning it.
-            return DeviceInfo(identifiers=device.identifiers, connections=device.connections)
-
     state = hass.states.get(tracked_entity_id)
     name = state.attributes.get("friendly_name", tracked_entity_id) if state else tracked_entity_id
-    return DeviceInfo(
+
+    device_info = DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
         name=name,
         manufacturer="Whodidit",
-        model="Virtual tracked entity",
+        model="Interaction tracker",
         entry_type=DeviceEntryType.SERVICE,
     )
+
+    # Nest under the physical device when the tracked entity has one and
+    # that device exposes identifiers we can point `via_device` at.
+    tracked_entry = ent_reg.async_get(tracked_entity_id)
+    if tracked_entry and tracked_entry.device_id:
+        device = dev_reg.async_get(tracked_entry.device_id)
+        if device is not None and device.identifiers:
+            # via_device takes a single (domain, id) identifier of the
+            # parent device; use any one of its identifiers.
+            device_info["via_device"] = next(iter(device.identifiers))
+
+    return device_info
 
 
 class WhoditSensor(RestoreEntity, SensorEntity):

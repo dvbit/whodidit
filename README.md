@@ -291,6 +291,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 1.3.6
+- Fix: in some cases the whodidit entities were created without a device (or spawned an orphan device). The integration previously tried to merge its entities into the tracked entity's physical device by copying its identifiers and connections — a pattern that is deprecated and could silently fork a duplicate/empty device (HA dev blog 2026-07-21). Whodidit now **always** creates its own named service device and nests it under the physical device via `via_device`, so the entities are reliably grouped on a named device page and shown as a child of the real device when there is one.
+
 ### 1.3.5
 - The integration now ships its **own brand icon** in a `brand/` folder (`brand/icon.png`, `brand/logo.png` + @2x). Since **Home Assistant 2026.3** custom integrations can provide local brand images, served through HA's `/api/brands/integration/whodidit/…` proxy and taking priority over the CDN — no `home-assistant/brands` PR needed. The icon shows on the **Devices & Services** page, device pages and throughout the HA frontend.
 - Note: on HA versions older than 2026.3 this folder is simply ignored (no breakage). A known HACS bug (hacs/integration#5171) means the icon may still appear blank in the HACS store list until HACS adds a fallback to the local brands API; everywhere else in HA it works.
