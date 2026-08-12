@@ -43,18 +43,14 @@ EVENT_TRIGGER_DETECTED = "whodidit_trigger_detected"
 # --- Config entry data keys --------------------------------------------------
 CONF_TRACKED_ENTITY_ID = "entity_id"
 
-# --- Config entry options (spec: "Config Flow" step 2 + Options Flow) -------
-# All optional; defaults chosen to match `dvbit/switch_interaction` for the
-# click window and 5 minutes for the reset lapse (sensible for room-level
-# occupancy sensors).
+# --- Config entry options (spec v2.0.0) -------------------------------------
+# Physical-interaction options. The binary sensor is ON during a click
+# train and OFF at the end of the detection window; there is no motion/
+# occupancy sensor and no separate reset lapse anymore.
 CONF_ENABLE_PHYSICAL = "enable_physical_interaction"
-CONF_MOTION_SENSOR = "motion_sensor_entity_id"
-CONF_OCCUPANCY_SENSOR = "occupancy_sensor_entity_id"
-CONF_RESET_LAPSE_SECONDS = "reset_lapse_seconds"
 CONF_CLICK_WINDOW_SECONDS = "click_window_seconds"
 
 DEFAULT_ENABLE_PHYSICAL = False
-DEFAULT_RESET_LAPSE_SECONDS = 300
 DEFAULT_CLICK_WINDOW_SECONDS = 3
 
 # --- Services (spec: "Servizio") --------------------------------------------

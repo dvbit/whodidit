@@ -31,8 +31,7 @@ update_options:
       name: Options
       description: >
         Partial options object (enable_physical_interaction,
-        reset_lapse_seconds, click_window_seconds,
-        occupancy_sensor_entity_id, motion_sensor_entity_id).
+        click_window_seconds).
       required: true
       selector:
         object: {}

@@ -123,29 +123,21 @@ automation:
             via {{ trigger.event.data.state }}.
 ```
 
-## Interazione fisica (v1.1.0) 🖐️
+## Interazione fisica 🖐️
 
-Per ogni entità monitorata puoi abilitare un **sensore binario** che va ON al primo click fisico (classificazione con `source_type = device`) e resta ON finché non scatta una condizione di reset. Il modello è ispirato a [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction), con in più un reset "consapevole della stanza".
+Per ogni entità monitorata puoi abilitare un **sensore binario** che va ON al primo click fisico (classificazione con `source_type = device`) e va OFF quando la finestra di rilevazione click si chiude. Il modello è ispirato a [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction).
 
 ### Configurazione
 
 Impostabile durante il config flow (step 2) o successivamente via **Configura** sull'entry. Campi:
 
 - **Attiva sensore binario di interazione fisica** — interruttore principale.
-- **Tempo di reset (secondi)** — default 300.
-- **Finestra conteggio click (secondi)** — default 3 (come `switch_interaction`).
-- **Sensore di presenza** — opzionale, dominio `binary_sensor`.
-- **Sensore di movimento** — opzionale, dominio `binary_sensor`.
+- **Finestra click (secondi)** — default 3. La finestra di rilevazione; ogni click al suo interno la estende (scorrevole).
 
-### Logica di reset
+### Comportamento
 
-Tre modalità, in base ai sensori configurati (**presenza > movimento > solo tempo**):
-
-1. **Con sensore di presenza:** dopo un click fisico, si attende che la presenza sia OFF, poi si contano `reset_lapse_seconds`; se la presenza torna ON durante il conteggio il timer si annulla e riparte quando torna OFF. Il reset manuale via servizio è sempre disponibile.
-2. **Con sensore di movimento (senza presenza):** come sopra ma sul sensore di movimento.
-3. **Nessun sensore di riferimento:** `reset_lapse_seconds` a partire dal momento in cui il binary è andato ON.
-
-Ogni nuovo click fisico che arriva mentre il conteggio di reset è pendente lo annulla — l'utente sta ancora interagendo.
+- Il sensore binario va **ON** al primo click fisico e **OFF** quando la finestra si chiude. Resta ON per la durata di un "treno di click" e OFF tra un treno e l'altro.
+- L'attributo `click_count` contiene il numero di click fisici nel treno. **Persiste** dopo che il sensore va OFF (continua a mostrare l'ultimo treno) e si azzera solo al primo click del treno successivo. Esempio: un singolo click mostra 1; dopo la finestra, un doppio click mostra 2 (non 3).
 
 ### Servizio
 
@@ -230,7 +222,7 @@ La card mostra:
 
 - **Ultima interazione** — icona stato, stato localizzato e un piccolo puntino di confidenza colorato (verde = alta, giallo = media, rosso = bassa). Clicca la riga per aprire un **popup storico** con le ultime 25 voci.
 - **Interazione fisica** — indicatore discreto Attivo/Inattivo più `click_count` e ora ultimo click (solo se il sensore binario è attivo).
-- **Controlli in basso a destra** — un pulsante **reset** (quando il sensore binario esiste) e un **ingranaggio impostazioni** (⚙️) che apre un dialog per modificare al volo: attivazione sensore interazione fisica, tempo di reset, finestra click e sensori di riferimento presenza/movimento. Il salvataggio chiama `whodidit.update_options`, che ricarica l'entry rendendo effettive subito le modifiche.
+- **Controlli in basso a destra** — un pulsante **reset** (quando il sensore binario esiste) e un **ingranaggio impostazioni** (⚙️) che apre un dialog per modificare al volo: attivazione sensore interazione fisica e finestra click. Il salvataggio chiama `whodidit.update_options`, che ricarica l'entry rendendo effettive subito le modifiche.
 
 > **Nota sulla distribuzione.** HACS non mostra nel tab "Frontend" le card che vivono in un repository di tipo *Integration*. È previsto: Whodidit serve la card come asset statico e la registra da sé come risorsa Lovelace, quindi funziona senza aggiungere manualmente la risorsa (in modalità Lovelace *storage*). In modalità *YAML* aggiungi la risorsa a mano: `url: /whodidit/whodidit-card.js`, `type: module`.
 
@@ -291,6 +283,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Storico versioni
+
+### 2.0.0 — breaking
+- Semplificato il modello di interazione fisica. Il sensore binario ora è semplicemente **ON durante un treno di click e OFF quando la finestra di rilevazione si chiude**. Rimossi completamente i sensori di riferimento presenza/movimento e il tempo di reset separato — le uniche opzioni di interazione fisica sono l'interruttore di attivazione e la finestra click. `click_count` continua a persistere dopo l'OFF e si azzera al treno successivo. Il servizio manuale `whodidit.reset_physical_interaction` è mantenuto. Le opzioni legacy delle versioni precedenti (sensori di riferimento, tempo di reset) vengono ignorate/rimosse automaticamente.
 
 ### 1.4.0
 - Card: l'header ora mostra il **nome dell'entità monitorata**. Il sensore sorgente-trigger espone due nuovi attributi a questo scopo, `tracked_entity` e `tracked_entity_name`.

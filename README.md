@@ -123,29 +123,21 @@ automation:
             via {{ trigger.event.data.state }}.
 ```
 
-## Physical Interaction (v1.1.0) 🖐️
+## Physical Interaction 🖐️
 
-For every tracked entity you can enable a companion **binary sensor** that turns ON at the first physical click (a classification with `source_type = device`) and stays ON until a reset condition is met. This mirrors the model of [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction) and adds room-aware auto-reset.
+For every tracked entity you can enable a companion **binary sensor** that turns ON at the first physical click (a classification with `source_type = device`) and turns OFF when the click-detection window closes. The model is inspired by [`dvbit/switch_interaction`](https://github.com/dvbit/switch_interaction).
 
 ### Configuration
 
 Enabled during the config flow (step 2) or later via **Configure** on the entry. Fields:
 
 - **Enable physical-interaction binary sensor** — master switch.
-- **Reset lapse (seconds)** — default 300.
-- **Click count window (seconds)** — default 3 (matches `switch_interaction`).
-- **Occupancy sensor** — optional, `binary_sensor` domain.
-- **Motion sensor** — optional, `binary_sensor` domain.
+- **Click window (seconds)** — default 3. The detection window; each click within it extends the window (sliding).
 
-### Reset logic
+### Behaviour
 
-Three modes, decided by which sensors are configured (**occupancy > motion > time-only**):
-
-1. **Occupancy configured:** after a physical click, wait for occupancy to be OFF, then count `reset_lapse_seconds`; if occupancy goes ON during the countdown the timer is cancelled and restarts when it clears again. Manual service reset is always available.
-2. **Motion configured (no occupancy):** same as above but on the motion sensor.
-3. **No reference sensor:** `reset_lapse_seconds` counted from the moment the binary went ON.
-
-Any additional physical click while the reset countdown is pending cancels the countdown — the user is still interacting.
+- The binary sensor goes **ON** at the first physical click and **OFF** when the window closes. It is ON for the duration of a "click train" and OFF between trains.
+- The `click_count` attribute holds the number of physical clicks in the train. It **persists** after the sensor goes OFF (keeps showing the last train size) and resets to 0 only at the first click of the next train. Example: a single click shows 1; after the window, a double-click shows 2 (not 3).
 
 ### Service
 
@@ -230,7 +222,7 @@ The card shows:
 
 - **Last interaction** — state icon, localized state and a small colour-coded confidence dot (green = high, amber = medium, red = low). Click the row to open a **history popup** with the last 25 entries.
 - **Physical interaction** — a discreet Active/Idle indicator plus `click_count` and last-click time (only when the binary sensor is enabled).
-- **Bottom-right controls** — a **reset** button (when the binary sensor exists) and a **settings cog** (⚙️) opening a dialog to change, on the fly: enable/disable the physical-interaction sensor, reset lapse, click window and the occupancy/motion reference sensors. Saving calls `whodidit.update_options`, which reloads the entry so changes take effect immediately.
+- **Bottom-right controls** — a **reset** button (when the binary sensor exists) and a **settings cog** (⚙️) opening a dialog to change, on the fly: enable/disable the physical-interaction sensor and the click window. Saving calls `whodidit.update_options`, which reloads the entry so changes take effect immediately.
 
 > **Note on distribution.** HACS does not surface cards that live inside an *Integration* repository in its "Frontend" tab. That is expected: Whodidit serves the card as a static asset and registers it as a Lovelace resource itself, so it works without any manual resource entry (in Lovelace *storage* mode). In *YAML* mode add the resource manually: `url: /whodidit/whodidit-card.js`, `type: module`.
 
@@ -290,6 +282,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 </details>
 
 ## Version history
+
+### 2.0.0 — breaking
+- Simplified the physical-interaction model. The binary sensor is now simply **ON during a click train and OFF when the detection window closes**. Removed the motion/occupancy reference sensors and the separate reset lapse entirely — the only physical-interaction options are the enable toggle and the click window. `click_count` still persists after OFF and resets at the next train. The manual `whodidit.reset_physical_interaction` service is retained. Legacy options from older versions (reference sensors, reset lapse) are ignored/removed automatically.
 
 ### 1.4.0
 - Card: the header now shows the **monitored entity name**. The trigger-source sensor exposes two new attributes for this, `tracked_entity` and `tracked_entity_name`.

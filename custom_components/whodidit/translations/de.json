@@ -13,10 +13,7 @@
         "description": "Du kannst einen Binärsensor hinzufügen, der auf ON geht, wenn eine physische Interaktion erkannt wird, mit Klickzähler. Lass die Sensoren leer für ein rein zeitbasiertes Reset.",
         "data": {
           "enable_physical_interaction": "Binärsensor für physische Interaktion aktivieren",
-          "reset_lapse_seconds": "Reset-Zeit (Sekunden)",
-          "click_window_seconds": "Klick-Zählfenster (Sekunden)",
-          "occupancy_sensor_entity_id": "Anwesenheitssensor (Priorität)",
-          "motion_sensor_entity_id": "Bewegungssensor (Fallback)"
+          "click_window_seconds": "Klick-Zählfenster (Sekunden)"
         }
       }
     },
@@ -35,10 +32,7 @@
         "description": "Aktiviere oder konfiguriere den Binärsensor für physische Interaktion für diese Entität.",
         "data": {
           "enable_physical_interaction": "Binärsensor für physische Interaktion aktivieren",
-          "reset_lapse_seconds": "Reset-Zeit (Sekunden)",
-          "click_window_seconds": "Klick-Zählfenster (Sekunden)",
-          "occupancy_sensor_entity_id": "Anwesenheitssensor (Priorität)",
-          "motion_sensor_entity_id": "Bewegungssensor (Fallback)"
+          "click_window_seconds": "Klick-Zählfenster (Sekunden)"
         }
       }
     }

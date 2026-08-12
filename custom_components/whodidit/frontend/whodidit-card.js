@@ -24,7 +24,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "1.4.0";
+const CARD_VERSION = "2.0.0";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -309,9 +309,7 @@ class WhoditCard extends HTMLElement {
     const bs = this._findBinarySensor();
     return {
       enable: !!bs,
-      lapse: bs ? bs.attributes.reset_lapse_seconds ?? 300 : 300,
       click: bs ? bs.attributes.click_window_seconds ?? 3 : 3,
-      ref: bs ? bs.attributes.reference_sensor || "" : "",
     };
   }
 
@@ -344,24 +342,10 @@ class WhoditCard extends HTMLElement {
             <input type="checkbox" id="f-enable" ${o.enable ? "checked" : ""}/>
           </label>
           <label class="frow">
-            <span>Reset lapse (s)</span>
-            <input type="number" min="1" max="86400" id="f-lapse" value="${o.lapse}"/>
-          </label>
-          <label class="frow">
             <span>Click window (s)</span>
             <input type="number" min="1" max="60" id="f-click" value="${o.click}"/>
           </label>
-          <label class="frow">
-            <span>Occupancy sensor</span>
-            <input type="text" id="f-occ" placeholder="binary_sensor.…" value="${
-              o.ref.startsWith("binary_sensor") ? o.ref : ""
-            }"/>
-          </label>
-          <label class="frow">
-            <span>Motion sensor</span>
-            <input type="text" id="f-motion" placeholder="binary_sensor.…" value=""/>
-          </label>
-          <div class="hint">Occupancy takes priority. Leave both empty for time-only reset.</div>
+          <div class="hint">The sensor is ON during a click train and turns OFF when the window closes.</div>
         </div>
         <div class="sheet-actions">
           <button class="btn ghost" id="s-cancel">Cancel</button>
@@ -379,18 +363,12 @@ class WhoditCard extends HTMLElement {
     const d = this.shadowRoot.getElementById("wd-settings");
     if (!d) return;
     const enable = d.querySelector("#f-enable").checked;
-    const lapse = parseInt(d.querySelector("#f-lapse").value, 10);
     const click = parseInt(d.querySelector("#f-click").value, 10);
-    const occ = d.querySelector("#f-occ").value.trim();
-    const motion = d.querySelector("#f-motion").value.trim();
 
     const options = {
       enable_physical_interaction: enable,
-      reset_lapse_seconds: isNaN(lapse) ? 300 : lapse,
       click_window_seconds: isNaN(click) ? 3 : click,
     };
-    if (occ) options.occupancy_sensor_entity_id = occ;
-    if (motion) options.motion_sensor_entity_id = motion;
 
     try {
       await this._hass.callService("whodidit", "update_options", {

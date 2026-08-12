@@ -27,83 +27,46 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_CLICK_WINDOW_SECONDS,
     CONF_ENABLE_PHYSICAL,
-    CONF_MOTION_SENSOR,
-    CONF_OCCUPANCY_SENSOR,
-    CONF_RESET_LAPSE_SECONDS,
     CONF_TRACKED_ENTITY_ID,
     DEFAULT_CLICK_WINDOW_SECONDS,
     DEFAULT_ENABLE_PHYSICAL,
-    DEFAULT_RESET_LAPSE_SECONDS,
     DOMAIN,
     SUPPORTED_DOMAINS,
 )
 
 
-def _binary_sensor_selector() -> selector.EntitySelector:
-    """Optional binary_sensor picker (motion / occupancy)."""
-    return selector.EntitySelector(selector.EntitySelectorConfig(domain="binary_sensor"))
-
-
 def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
-    """Build the (config-step-2 == options-step) schema.
+    """Build the (config-step-2 == options-step) schema (v2.0.0).
 
-    Optional entity fields are declared with `vol.Optional` so the user can
-    submit the form leaving them empty ("no reference sensor" is a
-    supported configuration per spec).
+    Only two options remain: the enable toggle and the click-detection
+    window. The binary sensor is ON during a click train and OFF when the
+    window closes - no motion/occupancy sensor, no reset lapse.
     """
-    schema_dict: dict = {
-        vol.Required(
-            CONF_ENABLE_PHYSICAL,
-            default=defaults.get(CONF_ENABLE_PHYSICAL, DEFAULT_ENABLE_PHYSICAL),
-        ): selector.BooleanSelector(),
-        vol.Required(
-            CONF_RESET_LAPSE_SECONDS,
-            default=defaults.get(CONF_RESET_LAPSE_SECONDS, DEFAULT_RESET_LAPSE_SECONDS),
-        ): selector.NumberSelector(
-            selector.NumberSelectorConfig(
-                min=1, max=86400, step=1, mode=selector.NumberSelectorMode.BOX
-            )
-        ),
-        vol.Required(
-            CONF_CLICK_WINDOW_SECONDS,
-            default=defaults.get(CONF_CLICK_WINDOW_SECONDS, DEFAULT_CLICK_WINDOW_SECONDS),
-        ): selector.NumberSelector(
-            selector.NumberSelectorConfig(
-                min=1, max=60, step=1, mode=selector.NumberSelectorMode.BOX
-            )
-        ),
-    }
-    # Optional entity selectors: only pre-fill the default when a value
-    # was previously stored - otherwise leave the field blank so the user
-    # can submit "nothing selected".
-    if defaults.get(CONF_OCCUPANCY_SENSOR):
-        schema_dict[
-            vol.Optional(CONF_OCCUPANCY_SENSOR, default=defaults[CONF_OCCUPANCY_SENSOR])
-        ] = _binary_sensor_selector()
-    else:
-        schema_dict[vol.Optional(CONF_OCCUPANCY_SENSOR)] = _binary_sensor_selector()
-
-    if defaults.get(CONF_MOTION_SENSOR):
-        schema_dict[
-            vol.Optional(CONF_MOTION_SENSOR, default=defaults[CONF_MOTION_SENSOR])
-        ] = _binary_sensor_selector()
-    else:
-        schema_dict[vol.Optional(CONF_MOTION_SENSOR)] = _binary_sensor_selector()
-
-    return vol.Schema(schema_dict)
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_ENABLE_PHYSICAL,
+                default=defaults.get(CONF_ENABLE_PHYSICAL, DEFAULT_ENABLE_PHYSICAL),
+            ): selector.BooleanSelector(),
+            vol.Required(
+                CONF_CLICK_WINDOW_SECONDS,
+                default=defaults.get(
+                    CONF_CLICK_WINDOW_SECONDS, DEFAULT_CLICK_WINDOW_SECONDS
+                ),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1, max=60, step=1, mode=selector.NumberSelectorMode.BOX
+                )
+            ),
+        }
+    )
 
 
 def _normalize_options(user_input: dict[str, Any]) -> dict[str, Any]:
-    """Coerce numbers to int and strip empty optional keys."""
+    """Coerce the click window to int."""
     out = dict(user_input)
-    for key in (CONF_RESET_LAPSE_SECONDS, CONF_CLICK_WINDOW_SECONDS):
-        if key in out and out[key] is not None:
-            out[key] = int(out[key])
-    for key in (CONF_MOTION_SENSOR, CONF_OCCUPANCY_SENSOR):
-        # NumberSelector never returns None; EntitySelector returns None
-        # or empty string when the user leaves it blank.
-        if key in out and not out[key]:
-            out.pop(key)
+    if CONF_CLICK_WINDOW_SECONDS in out and out[CONF_CLICK_WINDOW_SECONDS] is not None:
+        out[CONF_CLICK_WINDOW_SECONDS] = int(out[CONF_CLICK_WINDOW_SECONDS])
     return out
 
 

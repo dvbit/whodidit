@@ -13,10 +13,7 @@
         "description": "Vous pouvez ajouter un capteur binaire qui passe à ON lorsqu'une interaction physique est détectée, avec un compteur de clics. Laissez les capteurs vides pour un reset uniquement temporel.",
         "data": {
           "enable_physical_interaction": "Activer le capteur binaire d'interaction physique",
-          "reset_lapse_seconds": "Délai de réinitialisation (secondes)",
-          "click_window_seconds": "Fenêtre de comptage des clics (secondes)",
-          "occupancy_sensor_entity_id": "Capteur de présence (priorité)",
-          "motion_sensor_entity_id": "Capteur de mouvement (repli)"
+          "click_window_seconds": "Fenêtre de comptage des clics (secondes)"
         }
       }
     },
@@ -35,10 +32,7 @@
         "description": "Activez ou reconfigurez le capteur binaire d'interaction physique pour cette entité.",
         "data": {
           "enable_physical_interaction": "Activer le capteur binaire d'interaction physique",
-          "reset_lapse_seconds": "Délai de réinitialisation (secondes)",
-          "click_window_seconds": "Fenêtre de comptage des clics (secondes)",
-          "occupancy_sensor_entity_id": "Capteur de présence (priorité)",
-          "motion_sensor_entity_id": "Capteur de mouvement (repli)"
+          "click_window_seconds": "Fenêtre de comptage des clics (secondes)"
         }
       }
     }

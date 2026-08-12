@@ -219,20 +219,22 @@ def _register_update_options_service(hass: HomeAssistant) -> None:
             )
 
         # Merge partial options over the existing ones so the dialog can
-        # send only the fields it manages. Options flow already normalises
-        # types on next reload; we coerce the known numeric keys here too.
+        # send only the fields it manages.
         merged = dict(entry.options)
         merged.update(new_options)
-        for key in ("reset_lapse_seconds", "click_window_seconds"):
-            if key in merged and merged[key] is not None:
-                try:
-                    merged[key] = int(merged[key])
-                except (TypeError, ValueError):
-                    pass
-        # Strip emptied optional sensors.
-        for key in ("motion_sensor_entity_id", "occupancy_sensor_entity_id"):
-            if key in merged and not merged[key]:
-                merged.pop(key)
+        if "click_window_seconds" in merged and merged["click_window_seconds"] is not None:
+            try:
+                merged["click_window_seconds"] = int(merged["click_window_seconds"])
+            except (TypeError, ValueError):
+                pass
+        # Drop legacy keys from pre-2.0.0 entries (motion/occupancy sensors
+        # and reset lapse are no longer used).
+        for legacy in (
+            "motion_sensor_entity_id",
+            "occupancy_sensor_entity_id",
+            "reset_lapse_seconds",
+        ):
+            merged.pop(legacy, None)
 
         # Updating options triggers the entry's update listener, which
         # reloads the entry (add/remove the binary sensor as needed).
