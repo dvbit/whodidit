@@ -24,7 +24,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "2.0.0";
+const CARD_VERSION = "2.0.1";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -249,7 +249,17 @@ class WhoditCard extends HTMLElement {
     const old = this.shadowRoot.getElementById("wd-history");
     if (old) old.remove();
     const src = this._hass.states[this._config.entity];
-    const log = (src?.attributes?.history_log || []).slice(0, 25);
+    // Normalize history_log defensively: it should be an array of objects,
+    // but guard against it arriving as a JSON string or undefined.
+    let rawLog = src?.attributes?.history_log;
+    if (typeof rawLog === "string") {
+      try {
+        rawLog = JSON.parse(rawLog);
+      } catch (e) {
+        rawLog = [];
+      }
+    }
+    const log = Array.isArray(rawLog) ? rawLog.slice(0, 25) : [];
 
     const rows =
       log
