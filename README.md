@@ -291,6 +291,10 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 1.4.0
+- Card: the header now shows the **monitored entity name**. The trigger-source sensor exposes two new attributes for this, `tracked_entity` and `tracked_entity_name`.
+- Card: the history popup now shows the user for UI actions (`by <name>`) and no longer repeats a redundant "Device" label for device/monitoring entries, matching the main row.
+
 ### 1.3.6
 - Fix: in some cases the whodidit entities were created without a device (or spawned an orphan device). The integration previously tried to merge its entities into the tracked entity's physical device by copying its identifiers and connections — a pattern that is deprecated and could silently fork a duplicate/empty device (HA dev blog 2026-07-21). Whodidit now **always** creates its own named service device and nests it under the physical device via `via_device`, so the entities are reliably grouped on a named device page and shown as a child of the real device when there is one.
 

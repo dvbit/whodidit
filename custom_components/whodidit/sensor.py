@@ -344,6 +344,14 @@ class WhoditSensor(RestoreEntity, SensorEntity):
     # ------------------------------------------------------------------
     @property
     def extra_state_attributes(self) -> dict:
+        # Resolve the tracked entity's current friendly name so the card can
+        # display it in the header without extra lookups.
+        tracked_state = self.hass.states.get(self._tracked_entity_id)
+        tracked_name = (
+            tracked_state.attributes.get("friendly_name", self._tracked_entity_id)
+            if tracked_state
+            else self._tracked_entity_id
+        )
         return {
             ATTR_SOURCE_TYPE: self._source_type,
             ATTR_SOURCE_ID: self._source_id,
@@ -354,6 +362,9 @@ class WhoditSensor(RestoreEntity, SensorEntity):
             ATTR_CONFIDENCE: self._confidence,
             ATTR_HISTORY_LOG: list(self._history_log),
             ATTR_CACHE_DEBUG: self._cache_debug,
+            # Tracked entity info (used by the whodidit card header).
+            "tracked_entity": self._tracked_entity_id,
+            "tracked_entity_name": tracked_name,
         }
 
     @property

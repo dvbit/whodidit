@@ -24,7 +24,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "1.3.3";
+const CARD_VERSION = "1.4.0";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -191,9 +191,15 @@ class WhoditCard extends HTMLElement {
     // so we suppress it. For ui/service we prefix the user with a label so
     // it reads "by <name>".
     const subtitle = this._buildSubtitle(slug, a);
+    const trackedName =
+      a.tracked_entity_name || a.friendly_name || this._config.entity;
 
     this.shadowRoot.innerHTML = `${this._styles()}
       <ha-card>
+        <div class="head">
+          <ha-icon class="head-icon" icon="mdi:magnify-scan"></ha-icon>
+          <span class="head-name" title="${trackedName}">${trackedName}</span>
+        </div>
         <div class="body">
           <div class="row state-row" id="state-row" title="Show history">
             <ha-icon class="row-icon" icon="${icon}"></ha-icon>
@@ -249,14 +255,23 @@ class WhoditCard extends HTMLElement {
       log
         .map((h) => {
           const c = CONFIDENCE_COLORS[h.confidence] || "var(--disabled-text-color)";
-          const label = this._localizeState(h.source_type === "user" ? "ui" : h.source_type);
+          const type = h.source_type === "user" ? "ui" : h.source_type;
+          const label = this._localizeState(type);
+          // Suppress the redundant generic source_name for device/monitoring;
+          // for ui/service prefix with "by".
+          const generic = ["device", "monitoring", ""];
+          const nm = h.source_name;
+          const isGeneric = !nm || generic.includes(String(nm).toLowerCase());
+          let nameHtml = "";
+          if (!isGeneric) {
+            const prefix = type === "ui" || type === "service" ? "by " : "";
+            nameHtml = `<span class="h-name">${prefix}${nm}</span>`;
+          }
           return `
             <div class="h-row">
               <span class="h-dot" style="background:${c}"></span>
               <div class="h-main">
-                <div class="h-top"><span class="h-src">${label}</span>${
-            h.source_name ? `<span class="h-name">${h.source_name}</span>` : ""
-          }</div>
+                <div class="h-top"><span class="h-src">${label}</span>${nameHtml}</div>
                 <div class="h-time">${this._absTime(h.event_time)}</div>
               </div>
             </div>`;
@@ -398,6 +413,9 @@ class WhoditCard extends HTMLElement {
     return `<style>
       ha-card { display: flex; flex-direction: column; overflow: hidden; }
       .empty { padding: 16px; color: var(--error-color); }
+      .head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px 16px; }
+      .head-icon { --mdc-icon-size: 22px; color: var(--primary-color); flex: 0 0 auto; }
+      .head-name { font-size: 1.1rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .body { padding: 4px 4px 0 4px; }
 
       .row { display: flex; align-items: center; gap: 14px; padding: 12px 12px; border-radius: 12px; }
