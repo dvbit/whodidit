@@ -262,6 +262,18 @@ class WhoditSensor(RestoreEntity, SensorEntity):
         old_state: State | None = event.data.get("old_state")
         new_state: State | None = event.data.get("new_state")
 
+        # TEMP diag (2.4.1): trace every received state_changed so we can see
+        # whether rapid physical clicks reach this listener.
+        _LOGGER.debug(
+            "Whodidit[%s]: state_changed old=%s new=%s ctx=%s parent=%s user=%s",
+            self._tracked_entity_id,
+            old_state.state if old_state else None,
+            new_state.state if new_state else None,
+            event.context.id[:8] if event.context else None,
+            (event.context.parent_id or "-")[:8] if event.context else None,
+            event.context.user_id if event.context else None,
+        )
+
         if new_state is None:
             # Tracked entity was removed from HA (spec: "availability
             # tracking - the sensor reports unavailable if the tracked
@@ -278,12 +290,20 @@ class WhoditSensor(RestoreEntity, SensorEntity):
         if not is_state_change:
             monitored = MONITORED_ATTRIBUTES.get(self._domain)
             if not monitored or old_state is None:
+                _LOGGER.debug(
+                    "Whodidit[%s]: dropped (no state change, no monitored attrs)",
+                    self._tracked_entity_id,
+                )
                 return
             changed = any(
                 old_state.attributes.get(attr) != new_state.attributes.get(attr)
                 for attr in monitored
             )
             if not changed:
+                _LOGGER.debug(
+                    "Whodidit[%s]: dropped (no monitored attr changed)",
+                    self._tracked_entity_id,
+                )
                 return
             # Debounce rapid attribute-only changes (spec: "Note on
             # attribute-only changes" - one update per 2s per entity).
@@ -292,6 +312,9 @@ class WhoditSensor(RestoreEntity, SensorEntity):
                 self._last_attr_update is not None
                 and now - self._last_attr_update < ATTRIBUTE_DEBOUNCE_SECONDS
             ):
+                _LOGGER.debug(
+                    "Whodidit[%s]: dropped (attr debounce)", self._tracked_entity_id
+                )
                 return
             self._last_attr_update = now
 
