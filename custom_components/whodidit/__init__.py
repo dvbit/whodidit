@@ -12,8 +12,7 @@ import logging
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
-from homeassistant.core import CoreState, HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
@@ -51,20 +50,11 @@ _UPDATE_OPTIONS_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the frontend card once, at integration load.
-
-    Spec ref v1.2.0 / community guide: card registration must happen in
-    async_setup (once), not async_setup_entry (per entry).
+    """Best-effort early card registration when the integration is present
+    in configuration.yaml. For the normal UI/config-entry flow this may not
+    run, so registration is also (and primarily) done from the first
+    async_setup_entry - guarded to happen once. See async_setup_entry.
     """
-
-    async def _register_frontend(_event=None) -> None:
-        await JSModuleRegistration(hass).async_register()
-
-    if hass.state == CoreState.running:
-        await _register_frontend()
-    else:
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _register_frontend)
-
     return True
 
 
@@ -81,6 +71,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         domain_data["entries"] = 0
         _register_service(hass)
         _register_update_options_service(hass)
+        # Register the frontend card here: async_setup_entry is guaranteed
+        # to run for a config-entry integration, whereas async_setup and
+        # the HOMEASSISTANT_STARTED event may not fire when the integration
+        # is (re)loaded after HA has already started - which left the card
+        # static path unregistered (404 on /whodidit/whodidit-card.js).
+        await JSModuleRegistration(hass).async_register()
         _LOGGER.debug("Whodidit shared trigger cache started and services registered")
 
     domain_data["entries"] += 1

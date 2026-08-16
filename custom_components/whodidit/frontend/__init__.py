@@ -45,14 +45,21 @@ class JSModuleRegistration:
 
     async def _async_register_path(self) -> None:
         """Serve the frontend/ directory under URL_BASE."""
+        folder = str(Path(__file__).parent)
         try:
+            # Modern API (HA 2024.7+): async, non-blocking, batch.
             await self.hass.http.async_register_static_paths(
-                [StaticPathConfig(URL_BASE, str(Path(__file__).parent), False)]
+                [StaticPathConfig(URL_BASE, folder, False)]
             )
             _LOGGER.debug("Whodidit: static path registered %s", URL_BASE)
         except RuntimeError:
-            # Already registered (e.g. HA reload) - safe to ignore.
+            # Already registered (e.g. reload) - safe to ignore.
             _LOGGER.debug("Whodidit: static path already registered %s", URL_BASE)
+        except AttributeError:
+            # Older HA without async_register_static_paths - fall back to
+            # the legacy synchronous registration.
+            self.hass.http.register_static_path(URL_BASE, folder, False)
+            _LOGGER.debug("Whodidit: static path registered (legacy) %s", URL_BASE)
 
     async def _async_wait_for_lovelace_resources(self) -> None:
         """Wait until Lovelace resources are loaded, then register modules."""
