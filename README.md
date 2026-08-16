@@ -283,6 +283,12 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 2.1.0
+- Card redesign: the **history is now shown inline in the card** (all 25 entries, scrollable), replacing the click-to-open popup — this removes the popup rendering/caching issues entirely. Each history row shows a coloured confidence dot, the source type (Device/UI/Automation/…), the user (`by <name>`) when the source is a UI/service action, and the time. History comes from the trigger-source **sensor**'s `history_log` attribute (the binary sensor only tracks `click_count`). Settings are now an inline collapsible panel opened from the cog.
+
+### 2.0.1 – 2.0.4
+- Card loading and history fixes: robust `history_log` parsing; registration of the card static path moved to `async_setup_entry` (fixed `/whodidit/whodidit-card.js` 404); popup moved to a persistent overlay container to survive frequent state updates; more robust auto-update of the Lovelace resource `?v=` version. (These popup-era fixes are superseded by the inline history in 2.1.0.)
+
 ### 2.0.0 — breaking
 - Simplified the physical-interaction model. The binary sensor is now simply **ON during a click train and OFF when the detection window closes**. Removed the motion/occupancy reference sensors and the separate reset lapse entirely — the only physical-interaction options are the enable toggle and the click window. `click_count` still persists after OFF and resets at the next train. The manual `whodidit.reset_physical_interaction` service is retained. Legacy options from older versions (reference sensors, reset lapse) are ignored/removed automatically.
 

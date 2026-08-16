@@ -1,21 +1,27 @@
 /**
- * Whodidit Card  (spec v1.3.0)
+ * Whodidit Card  (spec v2.1.0)
  * ---------------------------------------------------------------------------
- * Minimalist Lovelace card for one tracked entity. Layout:
+ * Minimalist Lovelace card for one tracked entity, everything INLINE (no
+ * popups). Layout, top to bottom:
  *
- *   ┌───────────────────────────────────────────────┐
- *   │ <icon>  Last interaction                       │
- *   │         Device                         ● (conf)│   <- click row -> history popup
- *   │         2 min ago                               │
- *   │ ───────────────────────────────────────────────│
- *   │ <icon>  Physical    ● ON   ·   3 clicks         │   (only if binary enabled)
- *   │         last click 12:03                         │
- *   │                                        ↻   ⚙    │   <- reset + settings, bottom-right
- *   └───────────────────────────────────────────────┘
+ *   <icon>  <monitored entity name>                       (header)
+ *   ------------------------------------------------------
+ *   <icon>  Last interaction
+ *           <state>                              ● (conf)
+ *           by <user> · 2 min ago
+ *   ------------------------------------------------------
+ *   <icon>  Physical    ● Active   ·   3 clicks           (only if enabled)
+ *           last click 12:03
+ *   ------------------------------------------------------
+ *   History
+ *   ● Device                                  16:49:25
+ *   ● UI      by Nicola                        16:48:10
+ *   … (all 25 entries, scrollable)
+ *   ------------------------------------------------------
+ *                                              ↻    ⚙     (footer)
  *
- * - Confidence is shown as a small coloured dot (green/amber/red), no text.
- * - Clicking the last-interaction row opens a history popup (history_log).
- * - Reset and the settings cog live at the bottom-right of the card.
+ * History source: the trigger-source SENSOR's `history_log` attribute.
+ * The user (source_name) is shown as "by <name>" for ui/service entries.
  *
  * Framework-free vanilla JS (no build step).
  *
@@ -24,7 +30,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "2.0.4";
+const CARD_VERSION = "2.1.0";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -48,7 +54,6 @@ class WhoditCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._config = null;
     this._hass = null;
-    this._historyOpen = false;
     this._settingsOpen = false;
   }
 
@@ -65,7 +70,7 @@ class WhoditCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 3;
+    return 5;
   }
 
   set hass(hass) {
@@ -87,7 +92,7 @@ class WhoditCard extends HTMLElement {
       if (attrs.click_count === undefined) continue;
       if (
         eid.includes(trackedGuess) ||
-        (attrs.tracked_entity && attrs.tracked_entity === src.attributes.source_id)
+        (attrs.tracked_entity && attrs.tracked_entity === src.attributes.tracked_entity)
       ) {
         return st;
       }
@@ -109,10 +114,11 @@ class WhoditCard extends HTMLElement {
     return d.toLocaleString();
   }
 
-  _absTime(iso) {
-    if (!iso) return "—";
+  _timeShort(iso) {
+    if (!iso) return "";
     const d = new Date(iso);
-    return isNaN(d) ? iso : d.toLocaleString();
+    if (isNaN(d)) return iso;
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }
 
   _localizeState(slug) {
@@ -121,30 +127,42 @@ class WhoditCard extends HTMLElement {
     return t || slug;
   }
 
-  /** Compose the subtitle line under the state.
-   *  - device / monitoring: backend source_name duplicates the state, so
-   *    show only the relative time.
-   *  - ui: show "by <user>" (source_name holds the person name).
-   *  - service: show "by <service account>".
-   *  - automation / script / scene: show the specific entity name. */
+  /** Subtitle under the main state (device/monitoring: time only;
+   *  ui/service: "by <user>"; automation/script/scene: source name). */
   _buildSubtitle(slug, a) {
     const time = this._relTime(a.event_time);
     const name = a.source_name;
-    // Names to treat as "no meaningful name" (generic placeholders).
     const generic = ["device", "monitoring", ""];
-    const isGeneric =
-      !name || generic.includes(String(name).toLowerCase());
+    const isGeneric = !name || generic.includes(String(name).toLowerCase());
 
-    if (slug === "device" || slug === "monitoring") {
-      return time;
-    }
+    if (slug === "device" || slug === "monitoring") return time;
     if (slug === "ui" || slug === "service") {
-      // Prefer the resolved person/account name; fall back to user_id.
       const who = !isGeneric ? name : a.user_id ? `user ${String(a.user_id).slice(0, 8)}` : null;
       return who ? `by ${who} · ${time}` : time;
     }
-    // automation / script / scene
     return !isGeneric ? `${name} · ${time}` : time;
+  }
+
+  /** One history row: coloured dot + type + optional user + time. */
+  _historyRow(h) {
+    const c = CONFIDENCE_COLORS[h.confidence] || "var(--disabled-text-color)";
+    const type = h.source_type === "user" ? "ui" : h.source_type;
+    const label = this._localizeState(type);
+    const generic = ["device", "monitoring", ""];
+    const nm = h.source_name;
+    const isGeneric = !nm || generic.includes(String(nm).toLowerCase());
+    let nameHtml = "";
+    if (!isGeneric) {
+      const prefix = type === "ui" || type === "service" ? "by " : "";
+      nameHtml = `<span class="h-name">${prefix}${nm}</span>`;
+    }
+    return `
+      <div class="h-row">
+        <span class="h-dot" style="background:${c}"></span>
+        <span class="h-src">${label}</span>
+        ${nameHtml}
+        <span class="h-time">${this._timeShort(h.event_time)}</span>
+      </div>`;
   }
 
   // ----- Render -------------------------------------------------------------
@@ -153,14 +171,15 @@ class WhoditCard extends HTMLElement {
     const hass = this._hass;
     const src = hass ? hass.states[this._config.entity] : null;
 
+    if (!this.shadowRoot.getElementById("root")) {
+      this.shadowRoot.innerHTML = `${this._styles()}<div id="root"></div>`;
+    }
+    const root = this.shadowRoot.getElementById("root");
+
     if (!src) {
-      if (!this.shadowRoot.getElementById("card-root")) {
-        this.shadowRoot.innerHTML = `${this._styles()}
-          <div id="card-root"></div>
-          <div id="overlay-root"></div>`;
-      }
-      this.shadowRoot.getElementById("card-root").innerHTML =
-        `<ha-card><div class="empty">Entity <code>${this._config.entity || "—"}</code> not found.</div></ha-card>`;
+      root.innerHTML = `<ha-card><div class="empty">Entity <code>${
+        this._config.entity || "—"
+      }</code> not found.</div></ha-card>`;
       return;
     }
 
@@ -170,6 +189,21 @@ class WhoditCard extends HTMLElement {
     const confColor = CONFIDENCE_COLORS[conf] || "var(--disabled-text-color, #9e9e9e)";
     const icon = STATE_ICONS[slug] || "mdi:help-circle";
     const bs = this._findBinarySensor();
+    const trackedName = a.tracked_entity_name || a.friendly_name || this._config.entity;
+
+    // Normalize history_log defensively.
+    let rawLog = a.history_log;
+    if (typeof rawLog === "string") {
+      try {
+        rawLog = JSON.parse(rawLog);
+      } catch (e) {
+        rawLog = [];
+      }
+    }
+    const log = Array.isArray(rawLog) ? rawLog.slice(0, 25) : [];
+    const historyRows = log.length
+      ? log.map((h) => this._historyRow(h)).join("")
+      : `<div class="h-empty">No interactions recorded yet.</div>`;
 
     const physicalRow = bs
       ? `
@@ -191,51 +225,55 @@ class WhoditCard extends HTMLElement {
         </div>`
       : "";
 
-    // Build a clean subtitle. For device/monitoring the backend sets a
-    // generic source_name ("Device"/"") that duplicates the state label,
-    // so we suppress it. For ui/service we prefix the user with a label so
-    // it reads "by <name>".
-    const subtitle = this._buildSubtitle(slug, a);
-    const trackedName =
-      a.tracked_entity_name || a.friendly_name || this._config.entity;
+    const settingsPanel = this._settingsOpen
+      ? `
+        <div class="divider"></div>
+        <div class="settings">
+          <div class="settings-title">Settings</div>
+          <label class="frow switch">
+            <span>Physical-interaction sensor</span>
+            <input type="checkbox" id="f-enable" ${bs ? "checked" : ""}/>
+          </label>
+          <label class="frow">
+            <span>Click window (s)</span>
+            <input type="number" min="1" max="60" id="f-click" value="${
+              bs ? bs.attributes.click_window_seconds ?? 3 : 3
+            }"/>
+          </label>
+          <div class="settings-actions">
+            <button class="btn ghost" id="s-cancel">Cancel</button>
+            <button class="btn primary" id="s-save">Save</button>
+          </div>
+        </div>`
+      : "";
 
-    // Two persistent containers: #card-root is rebuilt on every hass
-    // update; #overlay-root hosts popups and is NEVER wiped by _render, so
-    // an open history/settings popup is not destroyed by frequent hass
-    // updates (which previously blanked the popup).
-    if (!this.shadowRoot.getElementById("card-root")) {
-      this.shadowRoot.innerHTML = `${this._styles()}
-        <div id="card-root"></div>
-        <div id="overlay-root"></div>`;
-    } else {
-      // Refresh styles + card only.
-      const styleEl = this.shadowRoot.querySelector("style");
-      if (!styleEl) {
-        this.shadowRoot.insertAdjacentHTML("afterbegin", this._styles());
-      }
-    }
-
-    const cardRoot = this.shadowRoot.getElementById("card-root");
-    cardRoot.innerHTML = `
+    root.innerHTML = `
       <ha-card>
         <div class="head">
           <ha-icon class="head-icon" icon="mdi:magnify-scan"></ha-icon>
           <span class="head-name" title="${trackedName}">${trackedName}</span>
         </div>
-        <div class="body">
-          <div class="row state-row" id="state-row" title="Show history">
-            <ha-icon class="row-icon" icon="${icon}"></ha-icon>
-            <div class="row-main">
-              <div class="row-line">
-                <span class="state">${this._localizeState(slug)}</span>
-                <span class="conf-dot" style="background:${confColor}" title="${conf || "unknown"}"></span>
-              </div>
-              <div class="row-sub">${subtitle}</div>
+
+        <div class="divider"></div>
+        <div class="row">
+          <ha-icon class="row-icon" icon="${icon}"></ha-icon>
+          <div class="row-main">
+            <div class="row-line">
+              <span class="state">${this._localizeState(slug)}</span>
+              <span class="conf-dot" style="background:${confColor}" title="${conf || "unknown"}"></span>
             </div>
-            <ha-icon class="chevron" icon="mdi:chevron-right"></ha-icon>
+            <div class="row-sub">${this._buildSubtitle(slug, a)}</div>
           </div>
-          ${physicalRow}
         </div>
+
+        ${physicalRow}
+
+        <div class="divider"></div>
+        <div class="hist-head">History</div>
+        <div class="timeline">${historyRows}</div>
+
+        ${settingsPanel}
+
         <div class="footer">
           ${
             bs
@@ -246,86 +284,14 @@ class WhoditCard extends HTMLElement {
         </div>
       </ha-card>`;
 
-    const stateRow = this.shadowRoot.getElementById("state-row");
-    if (stateRow) stateRow.addEventListener("click", () => this._openHistory());
     const cog = this.shadowRoot.getElementById("cog-btn");
-    if (cog) cog.addEventListener("click", () => this._openSettings());
+    if (cog) cog.addEventListener("click", () => this._toggleSettings());
     const reset = this.shadowRoot.getElementById("reset-btn");
     if (reset && bs) reset.addEventListener("click", () => this._callReset(bs.entity_id));
-
-    // Keep an open popup's DATA fresh without destroying it: only re-render
-    // its contents if it is already open.
-    if (this._historyOpen) this._renderHistory();
-    if (this._settingsOpen) this._renderSettings();
-  }
-
-  // ----- History popup ------------------------------------------------------
-  _openHistory() {
-    this._historyOpen = true;
-    this._renderHistory();
-  }
-  _closeHistory() {
-    this._historyOpen = false;
-    const d = this.shadowRoot.getElementById("wd-history");
-    if (d) d.remove();
-  }
-  _renderHistory() {
-    const old = this.shadowRoot.getElementById("wd-history");
-    if (old) old.remove();
-    const src = this._hass.states[this._config.entity];
-    // Normalize history_log defensively: it should be an array of objects,
-    // but guard against it arriving as a JSON string or undefined.
-    let rawLog = src?.attributes?.history_log;
-    if (typeof rawLog === "string") {
-      try {
-        rawLog = JSON.parse(rawLog);
-      } catch (e) {
-        rawLog = [];
-      }
-    }
-    const log = Array.isArray(rawLog) ? rawLog.slice(0, 25) : [];
-
-    const rows =
-      log
-        .map((h) => {
-          const c = CONFIDENCE_COLORS[h.confidence] || "var(--disabled-text-color)";
-          const type = h.source_type === "user" ? "ui" : h.source_type;
-          const label = this._localizeState(type);
-          // Suppress the redundant generic source_name for device/monitoring;
-          // for ui/service prefix with "by".
-          const generic = ["device", "monitoring", ""];
-          const nm = h.source_name;
-          const isGeneric = !nm || generic.includes(String(nm).toLowerCase());
-          let nameHtml = "";
-          if (!isGeneric) {
-            const prefix = type === "ui" || type === "service" ? "by " : "";
-            nameHtml = `<span class="h-name">${prefix}${nm}</span>`;
-          }
-          return `
-            <div class="h-row">
-              <span class="h-dot" style="background:${c}"></span>
-              <div class="h-main">
-                <div class="h-top"><span class="h-src">${label}</span>${nameHtml}</div>
-                <div class="h-time">${this._absTime(h.event_time)}</div>
-              </div>
-            </div>`;
-        })
-        .join("") || `<div class="h-empty">No history yet.</div>`;
-
-    const wrap = document.createElement("div");
-    wrap.id = "wd-history";
-    wrap.innerHTML = `
-      <div class="backdrop"></div>
-      <div class="sheet">
-        <div class="sheet-head">
-          <span><ha-icon icon="mdi:timeline-clock-outline"></ha-icon> History</span>
-          <ha-icon-button id="h-close"><ha-icon icon="mdi:close"></ha-icon></ha-icon-button>
-        </div>
-        <div class="sheet-body">${rows}</div>
-      </div>`;
-    (this.shadowRoot.getElementById("overlay-root") || this.shadowRoot).appendChild(wrap);
-    wrap.querySelector(".backdrop").addEventListener("click", () => this._closeHistory());
-    wrap.querySelector("#h-close").addEventListener("click", () => this._closeHistory());
+    const cancel = this.shadowRoot.getElementById("s-cancel");
+    if (cancel) cancel.addEventListener("click", () => this._toggleSettings());
+    const save = this.shadowRoot.getElementById("s-save");
+    if (save) save.addEventListener("click", () => this._saveSettings());
   }
 
   // ----- Actions ------------------------------------------------------------
@@ -339,109 +305,51 @@ class WhoditCard extends HTMLElement {
     }
   }
 
-  _currentOptions() {
-    const bs = this._findBinarySensor();
-    return {
-      enable: !!bs,
-      click: bs ? bs.attributes.click_window_seconds ?? 3 : 3,
-    };
-  }
-
-  // ----- Settings dialog ----------------------------------------------------
-  _openSettings() {
-    this._settingsOpen = true;
-    this._renderSettings();
-  }
-  _closeSettings() {
-    this._settingsOpen = false;
-    const d = this.shadowRoot.getElementById("wd-settings");
-    if (d) d.remove();
-  }
-  _renderSettings() {
-    const old = this.shadowRoot.getElementById("wd-settings");
-    if (old) old.remove();
-    const o = this._currentOptions();
-    const wrap = document.createElement("div");
-    wrap.id = "wd-settings";
-    wrap.innerHTML = `
-      <div class="backdrop"></div>
-      <div class="sheet">
-        <div class="sheet-head">
-          <span><ha-icon icon="mdi:cog-outline"></ha-icon> Settings</span>
-          <ha-icon-button id="s-close"><ha-icon icon="mdi:close"></ha-icon></ha-icon-button>
-        </div>
-        <div class="sheet-body form">
-          <label class="frow switch">
-            <span>Physical-interaction sensor</span>
-            <input type="checkbox" id="f-enable" ${o.enable ? "checked" : ""}/>
-          </label>
-          <label class="frow">
-            <span>Click window (s)</span>
-            <input type="number" min="1" max="60" id="f-click" value="${o.click}"/>
-          </label>
-          <div class="hint">The sensor is ON during a click train and turns OFF when the window closes.</div>
-        </div>
-        <div class="sheet-actions">
-          <button class="btn ghost" id="s-cancel">Cancel</button>
-          <button class="btn primary" id="s-save">Save</button>
-        </div>
-      </div>`;
-    (this.shadowRoot.getElementById("overlay-root") || this.shadowRoot).appendChild(wrap);
-    wrap.querySelector(".backdrop").addEventListener("click", () => this._closeSettings());
-    wrap.querySelector("#s-close").addEventListener("click", () => this._closeSettings());
-    wrap.querySelector("#s-cancel").addEventListener("click", () => this._closeSettings());
-    wrap.querySelector("#s-save").addEventListener("click", () => this._saveSettings());
+  _toggleSettings() {
+    this._settingsOpen = !this._settingsOpen;
+    this._render();
   }
 
   async _saveSettings() {
-    const d = this.shadowRoot.getElementById("wd-settings");
-    if (!d) return;
-    const enable = d.querySelector("#f-enable").checked;
-    const click = parseInt(d.querySelector("#f-click").value, 10);
-
-    const options = {
-      enable_physical_interaction: enable,
-      click_window_seconds: isNaN(click) ? 3 : click,
-    };
+    const enableEl = this.shadowRoot.getElementById("f-enable");
+    const clickEl = this.shadowRoot.getElementById("f-click");
+    if (!enableEl || !clickEl) return;
+    const enable = enableEl.checked;
+    const click = parseInt(clickEl.value, 10);
 
     try {
       await this._hass.callService("whodidit", "update_options", {
         entity_id: this._config.entity,
-        options,
+        options: {
+          enable_physical_interaction: enable,
+          click_window_seconds: isNaN(click) ? 3 : click,
+        },
       });
-      this._closeSettings();
+      this._settingsOpen = false;
+      this._render();
     } catch (e) {
       console.error("Whodidit: update_options failed", e);
-      const hint = d.querySelector(".hint");
-      if (hint) {
-        hint.textContent = "Update failed — check the entity and try again.";
-        hint.style.color = "var(--error-color)";
-      }
     }
   }
 
   // ----- Styles -------------------------------------------------------------
   _styles() {
     return `<style>
-      ha-card { display: flex; flex-direction: column; overflow: hidden; }
+      ha-card { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 2px; }
       .empty { padding: 16px; color: var(--error-color); }
-      .head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 6px 16px; }
+      .head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 8px 16px; }
       .head-icon { --mdc-icon-size: 22px; color: var(--primary-color); flex: 0 0 auto; }
       .head-name { font-size: 1.1rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .body { padding: 4px 4px 0 4px; }
 
-      .row { display: flex; align-items: center; gap: 14px; padding: 12px 12px; border-radius: 12px; }
-      .state-row { cursor: pointer; transition: background .15s; }
-      .state-row:hover { background: var(--secondary-background-color); }
+      .divider { height: 1px; background: var(--divider-color); margin: 2px 12px; }
+
+      .row { display: flex; align-items: center; gap: 14px; padding: 10px 16px; }
       .row-icon { --mdc-icon-size: 26px; color: var(--primary-color); flex: 0 0 auto; }
       .row-main { flex: 1; min-width: 0; }
       .row-line { display: flex; align-items: center; gap: 8px; }
       .state { font-size: 1.05rem; font-weight: 600; text-transform: capitalize; }
       .conf-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 2px var(--card-background-color); }
       .row-sub { color: var(--secondary-text-color); font-size: .82rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .chevron { --mdc-icon-size: 20px; color: var(--secondary-text-color); flex: 0 0 auto; }
-
-      .divider { height: 1px; background: var(--divider-color); margin: 2px 12px; }
 
       .physical .row-line { gap: 6px; font-size: .92rem; }
       .pstate { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
@@ -451,43 +359,34 @@ class WhoditCard extends HTMLElement {
       .pstate.off { color: var(--secondary-text-color); }
       .pstate.off .pdot { background: var(--disabled-text-color, #9e9e9e); }
       .sep { color: var(--secondary-text-color); }
-      .clicks { color: var(--primary-text-color); }
+
+      .hist-head { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em;
+                   color: var(--secondary-text-color); padding: 6px 16px 2px 16px; }
+      .timeline { max-height: 260px; overflow-y: auto; padding: 0 16px 6px 16px; }
+      .h-row { display: flex; align-items: center; gap: 8px; padding: 5px 0;
+               border-bottom: 1px dashed var(--divider-color); font-size: .85rem; }
+      .h-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+      .h-src { font-weight: 600; text-transform: capitalize; flex: 0 0 auto; }
+      .h-name { color: var(--secondary-text-color); flex: 1 1 auto; min-width: 0;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .h-time { color: var(--secondary-text-color); font-size: .78rem; margin-left: auto; flex: 0 0 auto; }
+      .h-empty { color: var(--secondary-text-color); padding: 12px 0; text-align: center; font-size: .85rem; }
+
+      .settings { padding: 8px 16px 4px 16px; }
+      .settings-title { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em;
+                        color: var(--secondary-text-color); margin-bottom: 6px; }
+      .frow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; }
+      .frow span { font-size: .9rem; }
+      .frow input[type=number] { width: 90px; padding: 6px 8px; border-radius: 8px;
+              border: 1px solid var(--divider-color); background: var(--secondary-background-color); color: inherit; }
+      .frow.switch input { width: 20px; height: 20px; }
+      .settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+      .btn { border: none; cursor: pointer; padding: 7px 14px; border-radius: 8px; font-size: .85rem; }
+      .btn.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+      .btn.ghost { background: transparent; color: var(--secondary-text-color); }
 
       .footer { display: flex; justify-content: flex-end; align-items: center; gap: 2px; padding: 2px 6px 6px 6px; }
       .footer ha-icon-button { --mdc-icon-size: 20px; color: var(--secondary-text-color); }
-
-      .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 8; }
-      .sheet { position: fixed; z-index: 9; left: 50%; bottom: 0; transform: translateX(-50%);
-               width: min(460px, 100vw); background: var(--card-background-color, #fff);
-               color: var(--primary-text-color); border-radius: 16px 16px 0 0;
-               box-shadow: 0 -6px 30px rgba(0,0,0,.35); max-height: 80vh; display: flex; flex-direction: column; }
-      @media (min-width: 620px) {
-        .sheet { top: 50%; bottom: auto; transform: translate(-50%,-50%); border-radius: 16px; }
-      }
-      .sheet-head { display: flex; align-items: center; justify-content: space-between;
-                    padding: 14px 8px 14px 18px; font-weight: 700; border-bottom: 1px solid var(--divider-color); }
-      .sheet-head span { display: inline-flex; align-items: center; gap: 8px; }
-      .sheet-body { padding: 10px 16px; overflow-y: auto; }
-      .sheet-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--divider-color); }
-
-      .h-row { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--divider-color); }
-      .h-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: 0 0 auto; }
-      .h-main { flex: 1; min-width: 0; }
-      .h-top { display: flex; gap: 8px; align-items: baseline; }
-      .h-src { font-weight: 600; text-transform: capitalize; }
-      .h-name { color: var(--secondary-text-color); font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .h-time { color: var(--secondary-text-color); font-size: .78rem; }
-      .h-empty { color: var(--secondary-text-color); padding: 16px 0; text-align: center; }
-
-      .form .frow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; }
-      .form .frow span { font-size: .9rem; }
-      .form input[type=number], .form input[type=text] { width: 190px; padding: 7px 9px; border-radius: 8px;
-              border: 1px solid var(--divider-color); background: var(--secondary-background-color); color: inherit; }
-      .form .switch input { width: 20px; height: 20px; }
-      .hint { margin-top: 8px; font-size: .78rem; color: var(--secondary-text-color); }
-      .btn { border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; font-size: .88rem; }
-      .btn.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-      .btn.ghost { background: transparent; color: var(--secondary-text-color); }
     </style>`;
   }
 }
@@ -499,7 +398,7 @@ window.customCards.push({
   type: "whodidit-card",
   name: "Whodidit Card",
   preview: true,
-  description: "Minimal card: who/what last triggered an entity, physical clicks, history popup and live settings.",
+  description: "Minimal card: who/what last triggered an entity, physical clicks and inline history.",
 });
 
 console.info(
