@@ -7,14 +7,6 @@
         "data": {
           "entity_id": "Zu überwachende Entität"
         }
-      },
-      "options": {
-        "title": "Physische Interaktion (optional)",
-        "description": "Du kannst einen Binärsensor hinzufügen, der auf ON geht, wenn eine physische Interaktion erkannt wird, mit Klickzähler. Lass die Sensoren leer für ein rein zeitbasiertes Reset.",
-        "data": {
-          "enable_physical_interaction": "Binärsensor für physische Interaktion aktivieren",
-          "click_window_seconds": "Klick-Zählfenster (Sekunden)"
-        }
       }
     },
     "error": {
@@ -31,7 +23,6 @@
         "title": "Physische Interaktion",
         "description": "Aktiviere oder konfiguriere den Binärsensor für physische Interaktion für diese Entität.",
         "data": {
-          "enable_physical_interaction": "Binärsensor für physische Interaktion aktivieren",
           "click_window_seconds": "Klick-Zählfenster (Sekunden)"
         }
       }

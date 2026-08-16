@@ -87,9 +87,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Reload the entry whenever options change so the binary_sensor
-    # platform re-evaluates `CONF_ENABLE_PHYSICAL` (adding/removing the
-    # entity as required) and picks up new timing/sensor settings.
+    # Reload the entry whenever options change so the binary_sensor picks
+    # up the new click window.
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     return True

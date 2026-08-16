@@ -284,6 +284,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Storico versioni
 
+### 2.3.0
+- Il sensore binario di interazione fisica è ora **sempre attivo e non disattivabile**. Rimossi il toggle di attivazione e il secondo step del config flow: aggiungendo un'entità monitorata si creano direttamente il sensore e il suo sensore binario. L'unica opzione di interazione fisica rimasta è la finestra click (modificabile da Opzioni o dalla card).
+
 ### 2.2.0
 - Suggerimento multi-click nello storico: le voci dei click fisici ora includono `click_index` e `train_size`, calcolati **nel backend** (il sensore binario è l'autorità sul treno di click). Quando un click fa parte di un doppio/triplo/… la card mostra un piccolo badge col totale del treno (es. `3×`) su ogni riga di quel treno. La card non calcola più il raggruppamento da sé, mantenendo coerenza tra frontend e backend. Alla chiusura della finestra il `train_size` finale viene consolidato sulle voci del treno.
 

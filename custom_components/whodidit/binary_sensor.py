@@ -27,10 +27,8 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import (
     CONF_CLICK_WINDOW_SECONDS,
-    CONF_ENABLE_PHYSICAL,
     CONF_TRACKED_ENTITY_ID,
     DEFAULT_CLICK_WINDOW_SECONDS,
-    DEFAULT_ENABLE_PHYSICAL,
     DOMAIN,
 )
 from .runtime import WhoditEntryRuntime
@@ -46,14 +44,10 @@ ATTR_CLICK_WINDOW = "click_window_seconds"
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up the physical-interaction binary sensor if enabled."""
-    if not entry.options.get(CONF_ENABLE_PHYSICAL, DEFAULT_ENABLE_PHYSICAL):
-        _LOGGER.debug(
-            "Whodidit: physical-interaction binary sensor disabled for entry %s",
-            entry.entry_id,
-        )
-        return
+    """Set up the physical-interaction binary sensor.
 
+    v2.2.0: the binary sensor is always enabled - there is no toggle.
+    """
     runtime: WhoditEntryRuntime = hass.data[DOMAIN]["entries_runtime"][entry.entry_id]
     tracked_entity_id = entry.data[CONF_TRACKED_ENTITY_ID]
 

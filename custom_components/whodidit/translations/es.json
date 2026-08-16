@@ -7,14 +7,6 @@
         "data": {
           "entity_id": "Entidad a monitorizar"
         }
-      },
-      "options": {
-        "title": "Interacción física (opcional)",
-        "description": "Puedes añadir un sensor binario que se pone en ON cuando se detecta una interacción física, con contador de clics. Deja los sensores vacíos para un reset solo por tiempo.",
-        "data": {
-          "enable_physical_interaction": "Activar sensor binario de interacción física",
-          "click_window_seconds": "Ventana de conteo de clics (segundos)"
-        }
       }
     },
     "error": {
@@ -31,7 +23,6 @@
         "title": "Interacción física",
         "description": "Activa o reconfigura el sensor binario de interacción física para esta entidad.",
         "data": {
-          "enable_physical_interaction": "Activar sensor binario de interacción física",
           "click_window_seconds": "Ventana de conteo de clics (segundos)"
         }
       }

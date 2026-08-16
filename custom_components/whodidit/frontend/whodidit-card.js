@@ -30,7 +30,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "2.2.0";
+const CARD_VERSION = "2.3.0";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -242,10 +242,6 @@ class WhoditCard extends HTMLElement {
         <div class="divider"></div>
         <div class="settings">
           <div class="settings-title">Settings</div>
-          <label class="frow switch">
-            <span>Physical-interaction sensor</span>
-            <input type="checkbox" id="f-enable" ${bs ? "checked" : ""}/>
-          </label>
           <label class="frow">
             <span>Click window (s)</span>
             <input type="number" min="1" max="60" id="f-click" value="${
@@ -323,17 +319,14 @@ class WhoditCard extends HTMLElement {
   }
 
   async _saveSettings() {
-    const enableEl = this.shadowRoot.getElementById("f-enable");
     const clickEl = this.shadowRoot.getElementById("f-click");
-    if (!enableEl || !clickEl) return;
-    const enable = enableEl.checked;
+    if (!clickEl) return;
     const click = parseInt(clickEl.value, 10);
 
     try {
       await this._hass.callService("whodidit", "update_options", {
         entity_id: this._config.entity,
         options: {
-          enable_physical_interaction: enable,
           click_window_seconds: isNaN(click) ? 3 : click,
         },
       });

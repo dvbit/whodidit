@@ -7,14 +7,6 @@
         "data": {
           "entity_id": "Entité à suivre"
         }
-      },
-      "options": {
-        "title": "Interaction physique (optionnel)",
-        "description": "Vous pouvez ajouter un capteur binaire qui passe à ON lorsqu'une interaction physique est détectée, avec un compteur de clics. Laissez les capteurs vides pour un reset uniquement temporel.",
-        "data": {
-          "enable_physical_interaction": "Activer le capteur binaire d'interaction physique",
-          "click_window_seconds": "Fenêtre de comptage des clics (secondes)"
-        }
       }
     },
     "error": {
@@ -31,7 +23,6 @@
         "title": "Interaction physique",
         "description": "Activez ou reconfigurez le capteur binaire d'interaction physique pour cette entité.",
         "data": {
-          "enable_physical_interaction": "Activer le capteur binaire d'interaction physique",
           "click_window_seconds": "Fenêtre de comptage des clics (secondes)"
         }
       }

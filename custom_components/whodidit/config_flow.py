@@ -26,28 +26,21 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_CLICK_WINDOW_SECONDS,
-    CONF_ENABLE_PHYSICAL,
     CONF_TRACKED_ENTITY_ID,
     DEFAULT_CLICK_WINDOW_SECONDS,
-    DEFAULT_ENABLE_PHYSICAL,
     DOMAIN,
     SUPPORTED_DOMAINS,
 )
 
 
 def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
-    """Build the (config-step-2 == options-step) schema (v2.0.0).
+    """Options schema (v2.2.0): only the click-detection window.
 
-    Only two options remain: the enable toggle and the click-detection
-    window. The binary sensor is ON during a click train and OFF when the
-    window closes - no motion/occupancy sensor, no reset lapse.
+    The physical-interaction binary sensor is always enabled and cannot be
+    turned off - so there is no enable toggle and no config-flow step 2.
     """
     return vol.Schema(
         {
-            vol.Required(
-                CONF_ENABLE_PHYSICAL,
-                default=defaults.get(CONF_ENABLE_PHYSICAL, DEFAULT_ENABLE_PHYSICAL),
-            ): selector.BooleanSelector(),
             vol.Required(
                 CONF_CLICK_WINDOW_SECONDS,
                 default=defaults.get(
@@ -113,8 +106,20 @@ class WhoditFlowHandler(ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(entity_id)
                 self._abort_if_unique_id_configured()
-                self._entity_id = entity_id
-                return await self.async_step_options()
+                state = self.hass.states.get(entity_id)
+                title = (
+                    state.attributes.get("friendly_name", entity_id)
+                    if state
+                    else entity_id
+                )
+                # Binary sensor is always enabled; only the click window is
+                # configurable (later, via Options). Create the entry
+                # directly - no second step.
+                return self.async_create_entry(
+                    title=title,
+                    data={CONF_TRACKED_ENTITY_ID: entity_id},
+                    options={CONF_CLICK_WINDOW_SECONDS: DEFAULT_CLICK_WINDOW_SECONDS},
+                )
 
         excluded = self._already_tracked_entity_ids()
         selector_kwargs: dict = {"domain": sorted(SUPPORTED_DOMAINS)}
@@ -131,36 +136,9 @@ class WhoditFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
-    # ------------------------------------------------------------------
-    # Step 2: physical-interaction options (spec v1.1.0)
-    # ------------------------------------------------------------------
-    async def async_step_options(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        assert self._entity_id is not None
-
-        if user_input is not None:
-            options = _normalize_options(user_input)
-            state = self.hass.states.get(self._entity_id)
-            title = (
-                state.attributes.get("friendly_name", self._entity_id)
-                if state
-                else self._entity_id
-            )
-            return self.async_create_entry(
-                title=title,
-                data={CONF_TRACKED_ENTITY_ID: self._entity_id},
-                options=options,
-            )
-
-        return self.async_show_form(
-            step_id="options",
-            data_schema=_options_schema({}),
-        )
-
 
 class WhoditOptionsFlowHandler(OptionsFlow):
-    """Handle Whodidit options - editing physical-interaction settings."""
+    """Handle Whodidit options - editing the click window."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None

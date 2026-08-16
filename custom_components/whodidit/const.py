@@ -47,10 +47,10 @@ CONF_TRACKED_ENTITY_ID = "entity_id"
 # Physical-interaction options. The binary sensor is ON during a click
 # train and OFF at the end of the detection window; there is no motion/
 # occupancy sensor and no separate reset lapse anymore.
-CONF_ENABLE_PHYSICAL = "enable_physical_interaction"
+# Physical-interaction option. The binary sensor is always enabled
+# (v2.2.0); only the click-detection window is configurable.
 CONF_CLICK_WINDOW_SECONDS = "click_window_seconds"
 
-DEFAULT_ENABLE_PHYSICAL = False
 DEFAULT_CLICK_WINDOW_SECONDS = 3
 
 # --- Services (spec: "Servizio") --------------------------------------------

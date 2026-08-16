@@ -7,14 +7,6 @@
         "data": {
           "entity_id": "Entity to track"
         }
-      },
-      "options": {
-        "title": "Physical interaction (optional)",
-        "description": "Optionally add a binary sensor that turns ON when a physical interaction is detected on this entity, plus a click counter. Leave the sensors empty for time-only reset.",
-        "data": {
-          "enable_physical_interaction": "Enable physical-interaction binary sensor",
-          "click_window_seconds": "Click count window (seconds)"
-        }
       }
     },
     "error": {
@@ -31,7 +23,6 @@
         "title": "Physical interaction",
         "description": "Enable or reconfigure the physical-interaction binary sensor for this entity.",
         "data": {
-          "enable_physical_interaction": "Enable physical-interaction binary sensor",
           "click_window_seconds": "Click count window (seconds)"
         }
       }
