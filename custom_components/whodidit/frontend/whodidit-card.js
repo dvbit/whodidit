@@ -30,7 +30,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "2.1.1";
+const CARD_VERSION = "2.1.2";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -202,27 +202,12 @@ class WhoditCard extends HTMLElement {
     }
     const log = Array.isArray(rawLog) ? rawLog.slice(0, 25) : [];
 
-    // TEMP diagnostics (2.1.1): log what the card actually reads so we can
-    // see whether the configured entity carries history_log.
-    if (!this._diagLogged) {
-      this._diagLogged = true;
-      console.info(
-        "[whodidit-card] entity:",
-        this._config.entity,
-        "| state:",
-        slug,
-        "| history_log type:",
-        typeof a.history_log,
-        "| history_log length:",
-        Array.isArray(a.history_log) ? a.history_log.length : "(not array)",
-        "| all attribute keys:",
-        Object.keys(a)
-      );
-    }
-
+    const isWhoditSensor = "history_log" in a || "tracked_entity" in a;
     const historyRows = log.length
       ? log.map((h) => this._historyRow(h)).join("")
-      : `<div class="h-empty">No interactions recorded yet.</div>`;
+      : isWhoditSensor
+      ? `<div class="h-empty">No interactions recorded yet.</div>`
+      : `<div class="h-empty">Not a Whodidit trigger-source sensor. Set <code>entity:</code> to a <code>sensor.*_trigger_source</code>.</div>`;
 
     const physicalRow = bs
       ? `
