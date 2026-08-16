@@ -32,15 +32,20 @@ class JSModuleRegistration:
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
         self.lovelace = self.hass.data.get("lovelace")
+        self._retries = 0
 
     async def async_register(self) -> None:
         """Register the static path and (storage mode) the Lovelace resource."""
         await self._async_register_path()
-        # `mode` on modern HA, `resource_mode` on older builds; default yaml.
+        # Detect Lovelace storage mode across HA versions. If we cannot
+        # determine the mode but a resources collection exists, attempt the
+        # resource registration anyway (it is a no-op in YAML mode because
+        # async_items() will be empty / read-only and we guard failures).
         mode = getattr(
-            self.lovelace, "mode", getattr(self.lovelace, "resource_mode", "yaml")
+            self.lovelace, "mode", getattr(self.lovelace, "resource_mode", None)
         )
-        if mode == "storage":
+        has_resources = getattr(self.lovelace, "resources", None) is not None
+        if mode == "storage" or (mode is None and has_resources):
             await self._async_wait_for_lovelace_resources()
 
     async def _async_register_path(self) -> None:
@@ -62,14 +67,35 @@ class JSModuleRegistration:
             _LOGGER.debug("Whodidit: static path registered (legacy) %s", URL_BASE)
 
     async def _async_wait_for_lovelace_resources(self) -> None:
-        """Wait until Lovelace resources are loaded, then register modules."""
+        """Wait until Lovelace resources are loaded, then register modules.
+
+        Bounded retry (max ~30s) so we never loop forever if the resources
+        collection never reports `loaded` (e.g. YAML mode).
+        """
+        self._retries = 0
 
         async def _check_loaded(_now: Any) -> None:
-            if getattr(self.lovelace.resources, "loaded", False):
-                await self._async_register_modules()
-            else:
-                _LOGGER.debug("Whodidit: Lovelace resources not loaded, retrying in 5s")
-                async_call_later(self.hass, 5, _check_loaded)
+            resources = getattr(self.lovelace, "resources", None)
+            if resources is not None and getattr(resources, "loaded", False):
+                try:
+                    await self._async_register_modules()
+                except Exception as err:  # noqa: BLE001 - never break setup
+                    _LOGGER.warning(
+                        "Whodidit: could not auto-register the card resource "
+                        "(%s). Add it manually if needed: %s/whodidit-card.js",
+                        err,
+                        URL_BASE,
+                    )
+                return
+            self._retries += 1
+            if self._retries > 6:
+                _LOGGER.debug(
+                    "Whodidit: Lovelace resources never reported loaded; "
+                    "skipping auto-registration (YAML mode or restricted API)"
+                )
+                return
+            _LOGGER.debug("Whodidit: Lovelace resources not loaded, retrying in 5s")
+            async_call_later(self.hass, 5, _check_loaded)
 
         await _check_loaded(0)
 
