@@ -24,7 +24,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "2.0.2";
+const CARD_VERSION = "2.0.3";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -154,8 +154,13 @@ class WhoditCard extends HTMLElement {
     const src = hass ? hass.states[this._config.entity] : null;
 
     if (!src) {
-      this.shadowRoot.innerHTML = `${this._styles()}
-        <ha-card><div class="empty">Entity <code>${this._config.entity || "—"}</code> not found.</div></ha-card>`;
+      if (!this.shadowRoot.getElementById("card-root")) {
+        this.shadowRoot.innerHTML = `${this._styles()}
+          <div id="card-root"></div>
+          <div id="overlay-root"></div>`;
+      }
+      this.shadowRoot.getElementById("card-root").innerHTML =
+        `<ha-card><div class="empty">Entity <code>${this._config.entity || "—"}</code> not found.</div></ha-card>`;
       return;
     }
 
@@ -194,7 +199,24 @@ class WhoditCard extends HTMLElement {
     const trackedName =
       a.tracked_entity_name || a.friendly_name || this._config.entity;
 
-    this.shadowRoot.innerHTML = `${this._styles()}
+    // Two persistent containers: #card-root is rebuilt on every hass
+    // update; #overlay-root hosts popups and is NEVER wiped by _render, so
+    // an open history/settings popup is not destroyed by frequent hass
+    // updates (which previously blanked the popup).
+    if (!this.shadowRoot.getElementById("card-root")) {
+      this.shadowRoot.innerHTML = `${this._styles()}
+        <div id="card-root"></div>
+        <div id="overlay-root"></div>`;
+    } else {
+      // Refresh styles + card only.
+      const styleEl = this.shadowRoot.querySelector("style");
+      if (!styleEl) {
+        this.shadowRoot.insertAdjacentHTML("afterbegin", this._styles());
+      }
+    }
+
+    const cardRoot = this.shadowRoot.getElementById("card-root");
+    cardRoot.innerHTML = `
       <ha-card>
         <div class="head">
           <ha-icon class="head-icon" icon="mdi:magnify-scan"></ha-icon>
@@ -231,6 +253,8 @@ class WhoditCard extends HTMLElement {
     const reset = this.shadowRoot.getElementById("reset-btn");
     if (reset && bs) reset.addEventListener("click", () => this._callReset(bs.entity_id));
 
+    // Keep an open popup's DATA fresh without destroying it: only re-render
+    // its contents if it is already open.
     if (this._historyOpen) this._renderHistory();
     if (this._settingsOpen) this._renderSettings();
   }
@@ -299,7 +323,7 @@ class WhoditCard extends HTMLElement {
         </div>
         <div class="sheet-body">${rows}</div>
       </div>`;
-    this.shadowRoot.appendChild(wrap);
+    (this.shadowRoot.getElementById("overlay-root") || this.shadowRoot).appendChild(wrap);
     wrap.querySelector(".backdrop").addEventListener("click", () => this._closeHistory());
     wrap.querySelector("#h-close").addEventListener("click", () => this._closeHistory());
   }
@@ -362,7 +386,7 @@ class WhoditCard extends HTMLElement {
           <button class="btn primary" id="s-save">Save</button>
         </div>
       </div>`;
-    this.shadowRoot.appendChild(wrap);
+    (this.shadowRoot.getElementById("overlay-root") || this.shadowRoot).appendChild(wrap);
     wrap.querySelector(".backdrop").addEventListener("click", () => this._closeSettings());
     wrap.querySelector("#s-close").addEventListener("click", () => this._closeSettings());
     wrap.querySelector("#s-cancel").addEventListener("click", () => this._closeSettings());
