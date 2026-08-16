@@ -30,8 +30,7 @@ update_options:
     options:
       name: Options
       description: >
-        Partial options object (enable_physical_interaction,
-        click_window_seconds).
+        Partial options object (currently only click_window_seconds).
       required: true
       selector:
         object: {}

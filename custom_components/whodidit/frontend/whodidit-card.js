@@ -10,7 +10,7 @@
  *           <state>                              ● (conf)
  *           by <user> · 2 min ago
  *   ------------------------------------------------------
- *   <icon>  Physical    ● Active   ·   3 clicks           (only if enabled)
+ *   <icon>  Physical    ● Active   ·   3 clicks           (physical interaction)
  *           last click 12:03
  *   ------------------------------------------------------
  *   History
@@ -30,7 +30,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "2.3.0";
+const CARD_VERSION = "2.3.1";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
