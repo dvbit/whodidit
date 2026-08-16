@@ -283,6 +283,11 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 2.4.0
+- Click-train counting moved to the **main sensor** (the authority), computed directly from the monitored entity's own event timestamps — fixes cases where rapid physical clicks past the first were not counted until the window closed. The binary sensor is now a thin mirror of that state (ON during the train, OFF when it closes; `click_count` mirrors the train position).
+- Card: **history no longer jumps back to the top** while scrolling — the timeline DOM is updated in place and the scroll position is preserved across state updates.
+- Card: **removed the in-card settings/cog**. The click window is configured only via the integration's **Configure** dialog (Options), and remains changeable there without recreating the integration.
+
 ### 2.3.0
 - The physical-interaction binary sensor is now **always enabled and cannot be disabled**. Removed the enable toggle and the config-flow second step: adding a tracked entity now creates the sensor and its binary sensor directly. The only physical-interaction option left is the click window (editable via Options or the card).
 

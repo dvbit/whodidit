@@ -284,6 +284,11 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Storico versioni
 
+### 2.4.0
+- Il conteggio del treno di click è stato spostato nel **sensore principale** (l'autorità), calcolato direttamente dai timestamp degli eventi dell'entità monitorata — risolve i casi in cui i click fisici rapidi oltre il primo non venivano contati finché la finestra non si chiudeva. Il sensore binario è ora un semplice specchio di quello stato (ON durante il treno, OFF alla chiusura; `click_count` rispecchia la posizione nel treno).
+- Card: lo **storico non torna più su** durante lo scroll — la timeline viene aggiornata sul posto e la posizione di scroll è preservata tra gli aggiornamenti di stato.
+- Card: **rimossa la configurazione/ingranaggio dalla card**. La finestra click si configura solo dal dialog **Configura** dell'integrazione (Opzioni), e resta modificabile lì senza ricreare l'integrazione.
+
 ### 2.3.0
 - Il sensore binario di interazione fisica è ora **sempre attivo e non disattivabile**. Rimossi il toggle di attivazione e il secondo step del config flow: aggiungendo un'entità monitorata si creano direttamente il sensore e il suo sensore binario. L'unica opzione di interazione fisica rimasta è la finestra click (modificabile da Opzioni o dalla card).
 

@@ -30,7 +30,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "2.3.1";
+const CARD_VERSION = "2.4.0";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -54,7 +54,8 @@ class WhoditCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._config = null;
     this._hass = null;
-    this._settingsOpen = false;
+    this._lastTopSig = null;
+    this._lastHistorySig = null;
   }
 
   static getStubConfig() {
@@ -237,25 +238,14 @@ class WhoditCard extends HTMLElement {
         </div>`
       : "";
 
-    const settingsPanel = this._settingsOpen
-      ? `
-        <div class="divider"></div>
-        <div class="settings">
-          <div class="settings-title">Settings</div>
-          <label class="frow">
-            <span>Click window (s)</span>
-            <input type="number" min="1" max="60" id="f-click" value="${
-              bs ? bs.attributes.click_window_seconds ?? 3 : 3
-            }"/>
-          </label>
-          <div class="settings-actions">
-            <button class="btn ghost" id="s-cancel">Cancel</button>
-            <button class="btn primary" id="s-save">Save</button>
-          </div>
-        </div>`
-      : "";
+    // Signature of the history data: rebuild the timeline DOM only when it
+    // actually changes, so the user's scroll position is preserved across
+    // frequent hass updates (fixes the "scroll jumps back to top" issue).
+    const historySig = log
+      .map((h) => `${h.event_time}|${h.train_size || 1}`)
+      .join(";");
 
-    root.innerHTML = `
+    const bodyHtml = `
       <ha-card>
         <div class="head">
           <ha-icon class="head-icon" icon="mdi:magnify-scan"></ha-icon>
@@ -278,9 +268,7 @@ class WhoditCard extends HTMLElement {
 
         <div class="divider"></div>
         <div class="hist-head">History</div>
-        <div class="timeline">${historyRows}</div>
-
-        ${settingsPanel}
+        <div class="timeline" id="timeline">${historyRows}</div>
 
         <div class="footer">
           ${
@@ -288,18 +276,30 @@ class WhoditCard extends HTMLElement {
               ? `<ha-icon-button id="reset-btn" title="Reset physical interaction"><ha-icon icon="mdi:restore"></ha-icon></ha-icon-button>`
               : ""
           }
-          <ha-icon-button id="cog-btn" title="Settings"><ha-icon icon="mdi:cog-outline"></ha-icon></ha-icon-button>
         </div>
       </ha-card>`;
 
-    const cog = this.shadowRoot.getElementById("cog-btn");
-    if (cog) cog.addEventListener("click", () => this._toggleSettings());
-    const reset = this.shadowRoot.getElementById("reset-btn");
-    if (reset && bs) reset.addEventListener("click", () => this._callReset(bs.entity_id));
-    const cancel = this.shadowRoot.getElementById("s-cancel");
-    if (cancel) cancel.addEventListener("click", () => this._toggleSettings());
-    const save = this.shadowRoot.getElementById("s-save");
-    if (save) save.addEventListener("click", () => this._saveSettings());
+    // Full rebuild only if the non-history part changed OR first render.
+    const topSig = `${slug}|${conf}|${trackedName}|${
+      bs ? bs.state + bs.attributes.click_count : "nobs"
+    }`;
+    if (this._lastTopSig !== topSig || !this.shadowRoot.getElementById("timeline")) {
+      root.innerHTML = bodyHtml;
+      this._lastTopSig = topSig;
+      this._lastHistorySig = historySig;
+      const reset = this.shadowRoot.getElementById("reset-btn");
+      if (reset && bs) reset.addEventListener("click", () => this._callReset(bs.entity_id));
+    } else if (this._lastHistorySig !== historySig) {
+      // Only the history changed: update just the timeline, keeping the
+      // rest (and, where possible, the scroll position).
+      const tl = this.shadowRoot.getElementById("timeline");
+      if (tl) {
+        const top = tl.scrollTop;
+        tl.innerHTML = historyRows;
+        tl.scrollTop = top;
+      }
+      this._lastHistorySig = historySig;
+    }
   }
 
   // ----- Actions ------------------------------------------------------------
@@ -310,30 +310,6 @@ class WhoditCard extends HTMLElement {
       });
     } catch (e) {
       console.error("Whodidit: reset failed", e);
-    }
-  }
-
-  _toggleSettings() {
-    this._settingsOpen = !this._settingsOpen;
-    this._render();
-  }
-
-  async _saveSettings() {
-    const clickEl = this.shadowRoot.getElementById("f-click");
-    if (!clickEl) return;
-    const click = parseInt(clickEl.value, 10);
-
-    try {
-      await this._hass.callService("whodidit", "update_options", {
-        entity_id: this._config.entity,
-        options: {
-          click_window_seconds: isNaN(click) ? 3 : click,
-        },
-      });
-      this._settingsOpen = false;
-      this._render();
-    } catch (e) {
-      console.error("Whodidit: update_options failed", e);
     }
   }
 

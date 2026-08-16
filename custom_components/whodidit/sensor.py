@@ -16,7 +16,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
 
@@ -174,7 +174,13 @@ class WhoditSensor(RestoreEntity, SensorEntity):
 
         self._last_attr_update: float | None = None
         self._unsub_state_change = None
-        self._unsub_train_update = None
+
+        # v2.4.0: the main sensor is the click-train authority. It counts
+        # consecutive physical (device) clicks that fall within the click
+        # window, using its own event timestamps.
+        self._train_count = 0            # clicks in the current train
+        self._last_device_click_mono: float | None = None
+        self._unsub_train_close = None   # timer that ends the current train
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -210,50 +216,12 @@ class WhoditSensor(RestoreEntity, SensorEntity):
             self.hass, [self._tracked_entity_id], self._async_state_changed
         )
 
-        # v2.2.0: listen for train metadata coming back from the binary
-        # sensor (the click-train authority) to annotate history entries.
-        self._unsub_train_update = self._runtime.register_train_update_listener(
-            self._async_on_train_update
-        )
-
     async def async_will_remove_from_hass(self) -> None:
         if self._unsub_state_change:
             self._unsub_state_change()
-        if self._unsub_train_update:
-            self._unsub_train_update()
+        if self._unsub_train_close:
+            self._unsub_train_close()
         self._cache.async_forget_entity(self._tracked_entity_id)
-
-    @callback
-    def _async_on_train_update(self, kind: str, click_index: int, train_size: int) -> None:
-        """Annotate history entries with click-train metadata from the
-        binary sensor (v2.2.0).
-
-        kind == "progress": set click_index (and provisional train_size) on
-            the most recent device entry (the one just appended).
-        kind == "final": stamp the final train_size onto the last
-            `train_size` consecutive device entries at the head of the log.
-        """
-        if not self._history_log:
-            return
-
-        if kind == "progress":
-            head = self._history_log[0]
-            if head.get(ATTR_SOURCE_TYPE) == SOURCE_DEVICE:
-                head["click_index"] = click_index
-                head["train_size"] = max(head.get("train_size", 1), click_index)
-                self.async_write_ha_state()
-            return
-
-        if kind == "final" and train_size >= 1:
-            stamped = 0
-            for entry in self._history_log:
-                if entry.get(ATTR_SOURCE_TYPE) != SOURCE_DEVICE:
-                    break  # trains are contiguous device runs
-                entry["train_size"] = train_size
-                stamped += 1
-                if stamped >= train_size:
-                    break
-            self.async_write_ha_state()
 
     def _restore_from_state(self, last_state: State) -> None:
         self._attr_native_value = last_state.state
@@ -347,10 +315,36 @@ class WhoditSensor(RestoreEntity, SensorEntity):
         self._confidence = result.confidence
         self._cache_debug = result.cache_debug
 
-        # Build the history entry. For physical (device) clicks we seed the
-        # click-train fields; the binary sensor will refine them via the
-        # train_update channel (progress + final). Non-device entries carry
-        # train_size 1 / index 1 so the card can treat them uniformly.
+        # v2.4.0: the main sensor is the click-train authority. Compute the
+        # train position for physical (device) clicks from its own event
+        # timestamps, independent of the binary sensor.
+        if result.source_type == SOURCE_DEVICE:
+            now_mono = time.monotonic()
+            window = self._click_window_seconds
+            if (
+                self._last_device_click_mono is not None
+                and now_mono - self._last_device_click_mono <= window
+            ):
+                self._train_count += 1  # same train
+            else:
+                self._train_count = 1  # new train
+            self._last_device_click_mono = now_mono
+            click_index = self._train_count
+            train_size = self._train_count
+            # (Re)arm the timer that closes the current train after the
+            # window elapses (used to drive the binary sensor OFF).
+            if self._unsub_train_close:
+                self._unsub_train_close()
+            self._unsub_train_close = async_call_later(
+                self.hass, window, self._async_close_train
+            )
+        else:
+            # Non-device change breaks any ongoing train.
+            self._train_count = 0
+            self._last_device_click_mono = None
+            click_index = 1
+            train_size = 1
+
         entry = {
             ATTR_EVENT_TIME: event_time,
             ATTR_SOURCE_TYPE: result.source_type,
@@ -358,10 +352,22 @@ class WhoditSensor(RestoreEntity, SensorEntity):
             ATTR_SOURCE_NAME: result.source_name,
             ATTR_CONFIDENCE: result.confidence,
             ATTR_CONTEXT_ID: context_id,
-            "click_index": 1,
-            "train_size": 1,
+            "click_index": click_index,
+            "train_size": train_size,
         }
         self._history_log.appendleft(entry)
+
+        # Consolidate the current train_size onto every entry of the train
+        # at the head of the log (so all rows show the running total).
+        if result.source_type == SOURCE_DEVICE and train_size >= 1:
+            stamped = 0
+            for e in self._history_log:
+                if e.get(ATTR_SOURCE_TYPE) != SOURCE_DEVICE:
+                    break
+                e["train_size"] = train_size
+                stamped += 1
+                if stamped >= train_size:
+                    break
 
         self.async_write_ha_state()
 
@@ -376,16 +382,32 @@ class WhoditSensor(RestoreEntity, SensorEntity):
                 ATTR_CONFIDENCE: result.confidence,
                 ATTR_CONTEXT_ID: context_id,
                 ATTR_EVENT_TIME: event_time,
+                "click_index": click_index,
+                "train_size": train_size,
             },
         )
 
-        # v1.1.0 spec: physical clicks (source_type == device) are handed
-        # off to the per-entry runtime so the physical-interaction binary
-        # sensor of this same entry can update its state and click_count.
-        # The binary sensor will call back via notify_train_update to set
-        # the real click_index/train_size on the entry just appended.
+        # Hand off to the binary sensor: it mirrors the train state (ON +
+        # click_count) but is no longer the counting authority.
         if result.source_type == SOURCE_DEVICE:
-            self._runtime.notify_device_click(context_id, event_time)
+            self._runtime.notify_device_click(context_id, event_time, click_index)
+
+    @callback
+    def _async_close_train(self, _now) -> None:
+        """The click window elapsed with no further device click: close the
+        current train and tell the binary sensor to go OFF."""
+        self._unsub_train_close = None
+        self._train_count = 0
+        self._last_device_click_mono = None
+        self._runtime.notify_train_closed()
+
+    @property
+    def _click_window_seconds(self) -> int:
+        from .const import CONF_CLICK_WINDOW_SECONDS, DEFAULT_CLICK_WINDOW_SECONDS
+
+        return int(
+            self._entry.options.get(CONF_CLICK_WINDOW_SECONDS, DEFAULT_CLICK_WINDOW_SECONDS)
+        )
 
     # ------------------------------------------------------------------
     # Exposed attributes (spec: "Sensor Attributes")
