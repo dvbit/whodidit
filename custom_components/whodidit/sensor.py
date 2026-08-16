@@ -174,6 +174,7 @@ class WhoditSensor(RestoreEntity, SensorEntity):
 
         self._last_attr_update: float | None = None
         self._unsub_state_change = None
+        self._unsub_train_update = None
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -209,10 +210,50 @@ class WhoditSensor(RestoreEntity, SensorEntity):
             self.hass, [self._tracked_entity_id], self._async_state_changed
         )
 
+        # v2.2.0: listen for train metadata coming back from the binary
+        # sensor (the click-train authority) to annotate history entries.
+        self._unsub_train_update = self._runtime.register_train_update_listener(
+            self._async_on_train_update
+        )
+
     async def async_will_remove_from_hass(self) -> None:
         if self._unsub_state_change:
             self._unsub_state_change()
+        if self._unsub_train_update:
+            self._unsub_train_update()
         self._cache.async_forget_entity(self._tracked_entity_id)
+
+    @callback
+    def _async_on_train_update(self, kind: str, click_index: int, train_size: int) -> None:
+        """Annotate history entries with click-train metadata from the
+        binary sensor (v2.2.0).
+
+        kind == "progress": set click_index (and provisional train_size) on
+            the most recent device entry (the one just appended).
+        kind == "final": stamp the final train_size onto the last
+            `train_size` consecutive device entries at the head of the log.
+        """
+        if not self._history_log:
+            return
+
+        if kind == "progress":
+            head = self._history_log[0]
+            if head.get(ATTR_SOURCE_TYPE) == SOURCE_DEVICE:
+                head["click_index"] = click_index
+                head["train_size"] = max(head.get("train_size", 1), click_index)
+                self.async_write_ha_state()
+            return
+
+        if kind == "final" and train_size >= 1:
+            stamped = 0
+            for entry in self._history_log:
+                if entry.get(ATTR_SOURCE_TYPE) != SOURCE_DEVICE:
+                    break  # trains are contiguous device runs
+                entry["train_size"] = train_size
+                stamped += 1
+                if stamped >= train_size:
+                    break
+            self.async_write_ha_state()
 
     def _restore_from_state(self, last_state: State) -> None:
         self._attr_native_value = last_state.state
@@ -306,16 +347,21 @@ class WhoditSensor(RestoreEntity, SensorEntity):
         self._confidence = result.confidence
         self._cache_debug = result.cache_debug
 
-        self._history_log.appendleft(
-            {
-                ATTR_EVENT_TIME: event_time,
-                ATTR_SOURCE_TYPE: result.source_type,
-                ATTR_SOURCE_ID: result.source_id,
-                ATTR_SOURCE_NAME: result.source_name,
-                ATTR_CONFIDENCE: result.confidence,
-                ATTR_CONTEXT_ID: context_id,
-            }
-        )
+        # Build the history entry. For physical (device) clicks we seed the
+        # click-train fields; the binary sensor will refine them via the
+        # train_update channel (progress + final). Non-device entries carry
+        # train_size 1 / index 1 so the card can treat them uniformly.
+        entry = {
+            ATTR_EVENT_TIME: event_time,
+            ATTR_SOURCE_TYPE: result.source_type,
+            ATTR_SOURCE_ID: result.source_id,
+            ATTR_SOURCE_NAME: result.source_name,
+            ATTR_CONFIDENCE: result.confidence,
+            ATTR_CONTEXT_ID: context_id,
+            "click_index": 1,
+            "train_size": 1,
+        }
+        self._history_log.appendleft(entry)
 
         self.async_write_ha_state()
 
@@ -336,6 +382,8 @@ class WhoditSensor(RestoreEntity, SensorEntity):
         # v1.1.0 spec: physical clicks (source_type == device) are handed
         # off to the per-entry runtime so the physical-interaction binary
         # sensor of this same entry can update its state and click_count.
+        # The binary sensor will call back via notify_train_update to set
+        # the real click_index/train_size on the entry just appended.
         if result.source_type == SOURCE_DEVICE:
             self._runtime.notify_device_click(context_id, event_time)
 

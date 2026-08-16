@@ -30,7 +30,7 @@
  *   entity: sensor.<name>_trigger_source
  */
 
-const CARD_VERSION = "2.1.2";
+const CARD_VERSION = "2.2.0";
 
 const CONFIDENCE_COLORS = {
   high: "var(--success-color, #43a047)",
@@ -143,7 +143,9 @@ class WhoditCard extends HTMLElement {
     return !isGeneric ? `${name} · ${time}` : time;
   }
 
-  /** One history row: coloured dot + type + optional user + time. */
+  /** One history row: coloured dot + type + optional user + time.
+   *  A `train_size` >= 2 on the entry renders a badge with the click-train
+   *  total (computed by the backend, not the card). */
   _historyRow(h) {
     const c = CONFIDENCE_COLORS[h.confidence] || "var(--disabled-text-color)";
     const type = h.source_type === "user" ? "ui" : h.source_type;
@@ -156,10 +158,16 @@ class WhoditCard extends HTMLElement {
       const prefix = type === "ui" || type === "service" ? "by " : "";
       nameHtml = `<span class="h-name">${prefix}${nm}</span>`;
     }
+    const size = Number(h.train_size) || 1;
+    const badge =
+      size >= 2
+        ? `<span class="h-badge" title="${size} clicks in a row">${size}×</span>`
+        : "";
     return `
       <div class="h-row">
         <span class="h-dot" style="background:${c}"></span>
         <span class="h-src">${label}</span>
+        ${badge}
         ${nameHtml}
         <span class="h-time">${this._timeShort(h.event_time)}</span>
       </div>`;
@@ -371,6 +379,9 @@ class WhoditCard extends HTMLElement {
                border-bottom: 1px dashed var(--divider-color); font-size: .85rem; }
       .h-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
       .h-src { font-weight: 600; text-transform: capitalize; flex: 0 0 auto; }
+      .h-badge { flex: 0 0 auto; font-size: .7rem; font-weight: 700; line-height: 1;
+                 padding: 2px 6px; border-radius: 10px; color: var(--text-primary-color, #fff);
+                 background: var(--primary-color); }
       .h-name { color: var(--secondary-text-color); flex: 1 1 auto; min-width: 0;
                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .h-time { color: var(--secondary-text-color); font-size: .78rem; margin-left: auto; flex: 0 0 auto; }

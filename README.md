@@ -283,6 +283,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Version history
 
+### 2.2.0
+- Multi-click hint in history: history entries for physical clicks now carry `click_index` and `train_size`, computed **in the backend** (the binary sensor is the click-train authority). When a click is part of a double/triple/… the card shows a small badge with the train total (e.g. `3×`) on every row of that train. The card no longer computes grouping itself, keeping frontend and backend consistent. On window close the final `train_size` is consolidated onto the train's entries.
+
 ### 2.1.0
 - Card redesign: the **history is now shown inline in the card** (all 25 entries, scrollable), replacing the click-to-open popup — this removes the popup rendering/caching issues entirely. Each history row shows a coloured confidence dot, the source type (Device/UI/Automation/…), the user (`by <name>`) when the source is a UI/service action, and the time. History comes from the trigger-source **sensor**'s `history_log` attribute (the binary sensor only tracks `click_count`). Settings are now an inline collapsible panel opened from the cog.
 

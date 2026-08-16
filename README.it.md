@@ -284,6 +284,9 @@ Localizzazione: EN/IT/FR/ES/DE. Output HACS-ready, README EN+IT.
 
 ## Storico versioni
 
+### 2.2.0
+- Suggerimento multi-click nello storico: le voci dei click fisici ora includono `click_index` e `train_size`, calcolati **nel backend** (il sensore binario è l'autorità sul treno di click). Quando un click fa parte di un doppio/triplo/… la card mostra un piccolo badge col totale del treno (es. `3×`) su ogni riga di quel treno. La card non calcola più il raggruppamento da sé, mantenendo coerenza tra frontend e backend. Alla chiusura della finestra il `train_size` finale viene consolidato sulle voci del treno.
+
 ### 2.1.0
 - Ridisegno card: lo **storico è ora mostrato inline nella card** (tutte le 25 voci, scrollabile), al posto del popup da aprire con click — questo elimina del tutto i problemi di rendering/cache del popup. Ogni riga mostra un puntino di confidenza colorato, il tipo di sorgente (Device/UI/Automazione/…), l'utente (`by <nome>`) quando la sorgente è un'azione UI/service, e l'ora. Lo storico proviene dall'attributo `history_log` del **sensore** sorgente-trigger (il sensore binario traccia solo `click_count`). Le impostazioni sono ora un pannello inline collassabile aperto dall'ingranaggio.
 

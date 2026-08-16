@@ -161,6 +161,11 @@ class WhoditPhysicalInteractionSensor(RestoreEntity, BinarySensorEntity):
 
         self.async_write_ha_state()
 
+        # v2.2.0: tell the main sensor the 1-based index of this click in
+        # the current train so it can annotate the history entry it just
+        # appended (provisional train_size == click_index for now).
+        self._runtime.notify_train_update("progress", self._click_count, self._click_count)
+
     @callback
     def _async_close_click_window(self, _now) -> None:
         """Window expired: binary goes OFF, click_count value persists."""
@@ -173,6 +178,10 @@ class WhoditPhysicalInteractionSensor(RestoreEntity, BinarySensorEntity):
             self._click_count,
         )
         self.async_write_ha_state()
+
+        # v2.2.0: consolidate the final train_size onto the train's history
+        # entries in the main sensor.
+        self._runtime.notify_train_update("final", 0, self._click_count)
 
     def _cancel_click_window(self) -> None:
         if self._unsub_click_window is not None:
